@@ -16,11 +16,20 @@ dp = Dispatcher(bot, storage = MemoryStorage())
 
 button_iiko = InlineKeyboardButton('Iiko', callback_data='Iiko')
 button_1c = InlineKeyboardButton('1C', callback_data='1C')
-choose_iiko_1c_KB = InlineKeyboardMarkup(row_width=1).add(button_iiko, button_1c)
+choose_iiko_1c_KB = InlineKeyboardMarkup(row_width=1).row(button_1c, button_iiko)
 
 button_iiko_cpec = InlineKeyboardButton('Iiko', callback_data='Iiko_cpec')
 button_1c_cpec = InlineKeyboardButton('1C', callback_data='1C_cpec')
-choose_iiko_1c_for_cpec_KB = InlineKeyboardMarkup(row_width=1).add(button_iiko_cpec, button_1c_cpec)
+choose_iiko_1c_for_cpec_KB = InlineKeyboardMarkup(row_width=1).row(button_iiko_cpec, button_1c_cpec)
+
+
+list_of_spec = InlineKeyboardButton('Список специалистов',callback_data="list_of_spec")
+add_spec = InlineKeyboardButton('Добавить специалиста',callback_data="add_spec")
+spec_kb = InlineKeyboardMarkup(row_width=1).row(list_of_spec,add_spec)
+
+accec_iiko_tsak = InlineKeyboardButton('Iiko',callback_data="accec_iiko_tsak")
+accec_1C_tsak = InlineKeyboardButton('1С',callback_data="accec_1C_tsak")
+acceces_task = InlineKeyboardMarkup(row_width=1).row(accec_iiko_tsak,accec_1C_tsak)
 @dp.message_handler(content_types=['new_chat_members'])
 async def new_members(msg):
     for i in range(len(msg.new_chat_members)):
@@ -28,22 +37,46 @@ async def new_members(msg):
         await bot.send_message(msg.chat.id, f"Добро пожаловать, @{name}! \n"\
                             "Что бы отправить заявку, пишите мне в директ(лс)")
         
-
-@dp.message_handler(commands=['start'], chat_type = 'private')
-async def start_command(msg: types.Message):
+stop_KB = InlineKeyboardMarkup(row_width=1).add(InlineKeyboardButton("стоп", callback_data='stop'))
+@dp.message_handler(commands=['start'], state='*')
+async def start_command(msg: types.Message, state: FSMContext):
+    await state.finish()
     if str(msg.from_user.id) in cpecialist_list():
         await bot.send_message(msg.from_user.id,
-                           text=f'Добро пожаловать {msg.from_user.first_name}!\n'+ 
-                                'Выберете свое направление:',
-                           reply_markup=choose_iiko_1c_for_cpec_KB
-                           )
-    else:    
+                        text=f'Добро пожаловать {msg.from_user.first_name}!\n'+ 
+                                'Выберете свое направление и понему появится список заявок:',
+                        reply_markup=choose_iiko_1c_for_cpec_KB
+                        )
         await bot.send_message(msg.from_user.id,
-                            text=f'Добро пожаловать {msg.from_user.first_name}!\n'+ 
-                                    'Выберете с чем вы хотите работать:',
-                            reply_markup=choose_iiko_1c_KB
-                            )
+                               text='Выберете свое направление и понему появится список принятых заявок:',
+                               reply_markup=acceces_task)
+        await bot.send_message(msg.from_user.id,
+                        text=f'Вы можете просмотреть список специалистов или добавить специалиста\n', 
+                        reply_markup= spec_kb
+                        )
 
+    else:    
+
+        await bot.send_message(msg.from_user.id,
+                                text=f'Добро пожаловать {msg.from_user.first_name}!\n'+ 
+                                        'Здесь вы можете создать заявку для интеграции iiko и 1С\n'
+                                ,reply_markup=choose_iiko_1c_KB
+                                )
+        await bot.send_message(msg.from_user.id,
+                                text='Если же , вы в процессе написание заяки и '+
+                                        'по каким-то причинам хотите отменить заявку ,'+ 
+                                        'нажмите на кнопку стоп, либо команду /stop'
+                                ,reply_markup=stop_KB
+                                )
+        
+@dp.callback_query_handler(lambda c: c.data == 'stop')
+async def stop_process(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.finish()
+    await  callback_query.message.answer('Вы остоновили все процессы')
+
+@dp.message_handler(commands=['stop'], state='*')
+async def stop_command(msg: types.Message, state: FSMContext):
+    await state.finish()
 class Iiko_States(StatesGroup):
     date_time_state = State()
     ip_state = State()
@@ -61,11 +94,7 @@ class Specialist_States(StatesGroup):
    
 @dp.callback_query_handler(lambda c: c.data == 'Iiko')
 async def save_information(callback_query: types.CallbackQuery, state: FSMContext):
-    await bot.edit_message_reply_markup(
-        chat_id=callback_query.from_user.id,
-        message_id=callback_query.message.message_id, 
-        reply_markup=None
-    )
+
     await  callback_query.message.answer('Вы выбрали Iiko')
     await  callback_query.message.answer('Введите время установки\n'+
                                          'Например: 28.11.2023 18:00 UTC+6 '
@@ -247,14 +276,14 @@ def cpecialist_list():
             cpecs.append(el)
     return cpecs
 
-@dp.message_handler(commands=['add_spec'], chat_type = 'private')
-async def instruction_for_add(msg: types.Message):
-    if str(msg.from_user.id) in cpecialist_list():
-        await bot.send_message(chat_id = msg.from_user.id, 
-                                text =  f'Ввидите id и имя специалиста, которого хотите добавить\n'+
-                                'например: 123456789 Сергей'
-                                )
+@dp.callback_query_handler(lambda c: c.data == 'add_spec')
+async def instruction_for_add(callback_query: types.CallbackQuery):
+        await callback_query.message.answer(text =  f'Ввидите id и имя специалиста,'+ 
+                                            'которого хотите добавить\n'+
+                                            'например: 123456789 Сергей'
+                                            )
         await Specialist_States.add_spec_state.set()
+
 
 @dp.message_handler(content_types=['text'], state=Specialist_States.add_spec_state)
 async def update_spec(msg=types.Message, state=FSMContext):
@@ -266,9 +295,9 @@ async def update_spec(msg=types.Message, state=FSMContext):
                             )
     await state.finish()
 
-@dp.message_handler(commands=['view_spec'], chat_type = 'private')
-async def instruction_for_add(msg: types.Message):
-    if str(msg.from_user.id) in cpecialist_list():
+@dp.callback_query_handler(lambda c: c.data == 'list_of_spec')
+async def list_of_spec(callback_query: types.CallbackQuery):
+    
         cpec_list = ''
         period = 0
         for cpec in cpecialist_list():
@@ -277,18 +306,10 @@ async def instruction_for_add(msg: types.Message):
             if period%2 == 0:
                 cpec_list+='\n'
             
-        await bot.send_message(chat_id = msg.from_user.id, 
-                                text =  f'Список специалистов:\n'+
-                                f'{cpec_list}'
-                                )
+        await callback_query.message.answer( f'Список специалистов:\n {cpec_list}')
 
 @dp.callback_query_handler(lambda c: c.data == 'Iiko_cpec')
 async def iiko_notifications(callback_query: types.CallbackQuery, state: FSMContext):
-    await bot.edit_message_reply_markup(
-        chat_id=callback_query.from_user.id,
-        message_id=callback_query.message.message_id, 
-        reply_markup=None
-    )
 
     nots_iiko_KB = InlineKeyboardMarkup(row_width=1)
 
@@ -304,20 +325,14 @@ async def iiko_notifications(callback_query: types.CallbackQuery, state: FSMCont
     await callback_query.message.answer('Список заявок:',
                                         reply_markup=nots_iiko_KB
                                         )
-    await bot.delete_message(chat_id=callback_query.message.chat.id, 
-                             message_id=callback_query.message.message_id
-                             )
+   
 yes_iiko = InlineKeyboardButton(text="YES", callback_data="iiko_btn_Yes")
 no_iiko = InlineKeyboardButton(text="NO", callback_data="iiko_btn_No")    
 option_for_iiko_KB = InlineKeyboardMarkup(row_width=1).add(yes_iiko, no_iiko)
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('notification_iiko'))
 async def iiko_notification(callback_query: types.CallbackQuery, state: FSMContext):
-    await bot.edit_message_reply_markup(
-            chat_id=callback_query.from_user.id,
-            message_id=callback_query.message.message_id, 
-            reply_markup=None
-        )
+
     notification = f"{callback_query.data.split('_')[2]} {callback_query.data.split('_')[3]}"
     print('Notification:', notification)
     task_text = ''
@@ -405,14 +420,31 @@ async def send_comment(msg: types.Message, state: FSMContext):
             file.writelines(line)
     await state.finish()
 
+@dp.callback_query_handler(lambda c: c.data == 'accec_iiko_tsak')
+async def view_accepted_task(callback_query: types.CallbackQuery, state: FSMContext):
+        task_iiko_accepted_KB = InlineKeyboardMarkup(row_width=1)
+        numeration = 0
+        for file in os.listdir():
+            if "YES" in file:
+                task_iiko_accepted_KB.add(InlineKeyboardButton(text=file, callback_data=f'{file}//{numeration}'))
+                numeration += 1
+        await callback_query.message.answer("Список принятых заявок Iiko",
+                               reply_markup=task_iiko_accepted_KB)
+
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('YES'))
+async def iiko_accepted_task(callback_query: types.CallbackQuery, state: FSMContext):
+    task = callback_query.data.split('//')[0]
+    print(task)
+    task_text = ''
+    with open(task, encoding='utf-8') as file:
+        text = file.readlines()
+    for line in text:
+        task_text += line
+
+    await callback_query.message.answer(task_text)
 
 @dp.callback_query_handler(lambda c: c.data == '1C_cpec')
 async def notifications_1C(callback_query: types.CallbackQuery, state: FSMContext):
-    await bot.edit_message_reply_markup(
-        chat_id=callback_query.from_user.id,
-        message_id=callback_query.message.message_id, 
-        reply_markup=None
-    )
     await  callback_query.message.answer('Вы выбрали 1C\n В разработке')
 # @dp.message_handler(commands = ['clients'], chat_type = 'private')
 # def cpec_notifications(msg: types.Message,):
@@ -422,11 +454,6 @@ async def notifications_1C(callback_query: types.CallbackQuery, state: FSMContex
 
 @dp.callback_query_handler(lambda c: c.data == '1C')
 async def save_information_1C(callback_query: types.CallbackQuery, state: FSMContext):
-    await bot.edit_message_reply_markup(
-        chat_id=callback_query.from_user.id,
-        message_id=callback_query.message.message_id, 
-        reply_markup=None
-    )
     await  callback_query.message.answer('Вы выбрали 1C\n Находиться в разработке')
 
 
