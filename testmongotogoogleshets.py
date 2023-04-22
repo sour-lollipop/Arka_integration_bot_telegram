@@ -13,7 +13,7 @@ collection = db.applications_collection
 # добавление новой записи
 for i in range(10):
     post = {"author": f"ChatGPT{i+1}", "text": "Hello, MongoDB!"}
-    post_id = collection.insert_one(post).inserted_id
+    # post_id = collection.insert_one(post).inserted_id
 
 # Подключение к Google Sheets
 scope = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/spreadsheets"]
@@ -24,12 +24,12 @@ sheet = client.open_by_url("https://docs.google.com/spreadsheets/d/1YXVuFm9O1qhu
 # sheet.format('A1:B1', {'textFormat': {'bold': True}})
 # Чтение данных из MongoDB и запись их в Google Sheets
 data = []
-for post in collection.find():
-    data.append([post["author"], post["text"]])
+# for post in collection.find():
+data.append([post["author"], post["text"]])
 
 
-for element in data:
-    sheet.insert_row(element)    
+# for element in data:
+#     sheet.insert_row(element)    
 
 sheet.insert_rows(data)
 
