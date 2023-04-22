@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "fluted-union-384407",
+  "private_key_id": "f6335f10cab344f1e3ababa9d6115c9f2929b081",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCzD8gXQHd35M0H\nYxU+U8zZ1e2d3wzbOBhN32TNwBmwGiTUpVqKGg2Rddj0eO/roylBWtvLQOdVvfXX\nFjZITPjFZR5AifGYMUJJ3id4si2RoT7L8iVJ9eaLx3SsEjYONwwSn1/ZtjxAWRMm\nA+fYek5hQK4/QrMvR3/fELQbpHJu8b8+OFrtW4h2wMc1vhBX5BwxqpapyhjQ26bM\ndlN01vPe3jFbQZ/etO0zKktelLZCi0/TwCf+HyQLTP/CBA77JiyMj7waUV8vU1Yi\nbZyx9gmAuDuO3IuEQW8PMj6AjSmG6BTFmmdYW3HAm8BZqx/8cLdtBqiLN5Gp7jZj\nHlxDb6J7AgMBAAECggEAFRdHctsDDLovHtmgMkaImyKZlGjQs4Q4nfjcKhKgc/UA\nYD5XGxZ/1qGnkP7Vs6RKQwptV9QolhmD5XZrpQ8mljRCNfPe4xWaQJJ22mk8+NRM\noz+9qKfaz0gKXreJFRo4GnwZ5s486+S8s/5DHA/RP59GEZQiVZqkXc/dMbb9oOzi\nJ/9f1MYMrWGanckNhbrPkiGcIJ1IQrNkk8zawXE5lpGMKvUhYYwAgylnzQ5vShZV\nsFj/i9CuuTMZIXn4WI0L++DUjMiWM3WTzaQUGHkgF8vAg7D8N4pyqz3fOux6HsJ3\nOjtzYRGhWUCkbNzVLl/pTpegptCi3g4mfgFVbernQQKBgQDeVpw8qvDaEgJoqhr+\n1WQj2OaJLEuBrQuizWuck8boBsGp/FS+1Gr90fIwhgAwkEVw3BKi7hiD1MYy6gMM\njzCmOrA6FqZGwVBywUbB8mTCQAZp9hdsZTU4v7xfTbzVyD0xSYag4eZD7AtAQNN5\n1ss2AJw+Z5lZpqUfBFTbomVPEQKBgQDOK9qPRpPBfhI6koByUjmTf53LqhBNyGdD\n2gcz5UlAlLrTrJ4SRsyp3+2yw4CiglplQclWHs8om3XD6i9sEDRt29QKjNbLWzQx\nj4pU4dcUamtehAxhwy9WHQi0QjBxy0tg0csdqlu3vTIPu8QabCNQ90ukULjN6TUW\nK9ToR1rwywKBgQCKMi1UbC/ea7lBkxHKeZqPyX6pnnWkOYn0/Fe58AR/LcvsO2H1\nZxTFhVxTGsc9aD8xQij3SqTENFmpRdj1Un87o1jsEi3x5rB5U3cGkAJe1urlq8et\nYU7uYgbU+f24p4iZfQkIMMEuUKZBnsmTfpW6kDCNfVlM5w7VM50HE26C8QKBgQCY\n5ib5mLLdjbzBGYMOxXITtFH3B9F9jgEfbeNnlkSkE2kWsG6uSTlhRkPHDnwoiRm2\n/HnvV3v0to441EWFE+N+EciIZnipaaMkmjpRxwc2CdJEzxNLsXA6od+hp3C8A7OM\nQyoqfvv0IOiuiGbf3ZC3bB755i+X7brEDY+hD8IezwKBgFIbgvioIisa1fdKpkYB\nUZ0onyOkr6gabzRZXm+2u9qsX8dGUcGrSsZPpH5hrRMKJiSF+q96+5zof5xnNKrZ\nJpoS/yq5HdqWCC5WffaLAZ5o6A0z26jqu7spF28B+3sh6i56Csi6NP9Ky0TvLPQp\nS23dLO/ng/XAlqCsCWy+14Z1\n-----END PRIVATE KEY-----\n",
+  "client_email": "arka-applications@fluted-union-384407.iam.gserviceaccount.com",
+  "client_id": "109094354412279673576",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/arka-applications%40fluted-union-384407.iam.gserviceaccount.com"
+}
