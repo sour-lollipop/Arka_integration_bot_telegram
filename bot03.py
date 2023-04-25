@@ -60,12 +60,12 @@ acceces_task = InlineKeyboardMarkup(row_width=1).row(accec_iiko_tsak,accec_1C_ts
 
 
 # кнопки для принятия или отказа заявки
-yes_iiko = InlineKeyboardButton(text="YES", callback_data="iiko_btn_Yes")
-no_iiko = InlineKeyboardButton(text="NO", callback_data="iiko_btn_No")    
+yes_iiko = InlineKeyboardButton(text="Принять", callback_data="iiko_btn_Yes")
+no_iiko = InlineKeyboardButton(text="Отклонить", callback_data="iiko_btn_No")    
 option_for_iiko_KB = InlineKeyboardMarkup(row_width=1).add(yes_iiko, no_iiko)
 
-yes_1C = InlineKeyboardButton(text="YES", callback_data="1C_btn_Yes")
-no_1C = InlineKeyboardButton(text="NO", callback_data="1C_btn_No")    
+yes_1C = InlineKeyboardButton(text="Принять", callback_data="1C_btn_Yes")
+no_1C = InlineKeyboardButton(text="Отклонить", callback_data="1C_btn_No")    
 option_for_1C_KB = InlineKeyboardMarkup(row_width=1).add(yes_1C, no_1C)
 
 
@@ -108,7 +108,7 @@ async def start_command(msg: types.Message, state: FSMContext):
                         reply_markup=choose_iiko_1c_for_cpec_KB
                         )
         await bot.send_message(msg.from_user.id,
-                               text='Выберете свое направление и понему появится список принятых заявок:',
+                               text='Выберете свое направление и появится список принятых заявок:',
                                reply_markup=acceces_task)
         await bot.send_message(msg.from_user.id,
                         text=f'Вы можете просмотреть список специалистов, добавить специалиста или его удалить. Также вы можете поменять свое имя как специалиста(по умолчанию используется имя вашего аккаунта)\n', 
@@ -207,7 +207,7 @@ async def save_date_organization(msg: types.Message, state: FSMContext):
 async def save_version_iiko(msg: types.Message, state: FSMContext):
     await state.update_data(client_version_iiko = msg.text)
     await bot.send_message(msg.from_user.id,
-                        'Фио контактного лица клинта'
+                        'Фио контактного лица клиента'
                         )
     await Clients_States.contact_client_state.set()
 
@@ -226,7 +226,7 @@ async def save_date_conf_client(msg: types.Message, state: FSMContext):
     await state.update_data(count_cass_client_state = msg.text,)
 
     await bot.send_message(msg.from_user.id,
-                            'Фио контактного лица клинта'
+                            'Фио контактного лица клиента'
                             )
     await Clients_States.contact_client_state.set()
 
@@ -331,7 +331,7 @@ def save_data( file_name,
                   ):
     with open(f"{file_name}",'w', encoding='utf-8') as file:
           file.writelines(f"Ник и id клиента:: {client_name} {client_id}\n")
-          file.writelines(f"ФИО менаджера:: {client_fio}\n")
+          file.writelines(f"ФИО менеджера:: {client_fio}\n")
           file.writelines(f"Контактный номер менеджера:: {client_contact_number}\n")
           file.writelines(f"Имя организации:: {client_client_organization_name}\n")
 
@@ -426,7 +426,7 @@ def cpecialist_list():
 # добавить специалистов
 @dp.callback_query_handler(lambda c: c.data == 'add_spec')
 async def instruction_for_add(callback_query: types.CallbackQuery):
-        await callback_query.message.answer(text =  f'Ввидите id и имя специалиста,'+ 
+        await callback_query.message.answer(text =  f'Введите id и имя специалиста,'+ 
                                             'которого хотите добавить\n'+
                                             'например: 123456789 Сергей'
                                             )
@@ -454,10 +454,10 @@ async def list_of_spec(callback_query: types.CallbackQuery):
                 cpec_list+='\n'
             
         await callback_query.message.answer( f'Список специалистов:\n {cpec_list}')
-# удалит специалистов
+# удалить специалистов
 @dp.callback_query_handler(lambda c: c.data == 'drop_spec')
 async def instruction_for_add(callback_query: types.CallbackQuery):
-        await callback_query.message.answer(text =  f'Ввидите id специалиста'+ 
+        await callback_query.message.answer(text =  f'Введите id специалиста'+ 
                                             'которого хотите удалить\n'+
                                             'например: 123456789 '
                                             )
@@ -490,7 +490,7 @@ async def update_spec(msg=types.Message, state=FSMContext):
 # удалит специалистов
 @dp.callback_query_handler(lambda c: c.data == 'edit_spec')
 async def instruction_for_add(callback_query: types.CallbackQuery):
-        await callback_query.message.answer(text =  f'Ввидите новое имя')
+        await callback_query.message.answer(text =  f'Введите новое имя')
         await Specialist_States.edit_spec_state.set()
 
 @dp.message_handler(content_types=['text'], state=Specialist_States.edit_spec_state)
@@ -897,7 +897,7 @@ async def send_comment_1C(msg: types.Message, state: FSMContext):
         name = data['cpec_name_new']
     except:
         name = msg.from_user.first_name
-    await bot.send_message(group_chat_id, f'{name}: Данная заявка не принято:')
+    await bot.send_message(group_chat_id, f'{name}: Данная заявка не принята:')
     await bot.send_message(group_chat_id, data['client_task'])
     await bot.send_message(group_chat_id, f'Причина:\n{msg.text}')
 
