@@ -9,6 +9,8 @@ import locale
 from google.oauth2.service_account import Credentials
 import gspread
 from pymongo import MongoClient
+import phonenumbers
+
 
 client = MongoClient('mongodb+srv://akmaral:aktolkyn2018@clusterarkabot.obnb02f.mongodb.net/test')
 db = client.Clients_applications_DB
@@ -78,7 +80,8 @@ class Clients_States(StatesGroup):
     contact_client_phone_state = State()
     adress_client_state = State()
     date_client_state = State()
-
+    retry_number_arka = State()
+    retry_number_client = State()
 class Specialist_States(StatesGroup):
     add_spec_state = State()
     drop_spec_state = State()
@@ -120,13 +123,14 @@ async def start_command(msg: types.Message, state: FSMContext):
                                 ,reply_markup=choose_iiko_1c_KB
                                 )
         
-@dp.callback_query_handler(lambda c: c.data == 'stop')
+@dp.callback_query_handler(lambda c: c.data == 'stop', state='*')
 async def stop_process(callback_query: types.CallbackQuery, state: FSMContext):
     await state.finish()
     await  callback_query.message.answer('Вы остановили все процессы')
 
 @dp.message_handler(commands=['stop'], state='*')
 async def stop_command(msg: types.Message, state: FSMContext):
+    await  bot.send_message(msg.from_user.id,'Вы остановили все процессы')
     await state.finish()
 
 @dp.callback_query_handler(lambda c: c.data == 'about')
@@ -153,22 +157,34 @@ async def Start_to_create_1C(callback_query: types.CallbackQuery, state: FSMCont
 
 @dp.message_handler(content_types=['text'], state= Clients_States.fio_client_state)
 async def save_date_fio(msg: types.Message, state: FSMContext):
+
     await state.update_data(client_name = msg.from_user.first_name,
                             client_id = msg.from_user.id,
                             client_fio = msg.text,
                             client_msg_date = msg.date.strftime('%d %B %H:%M')
                             )
     await bot.send_message(msg.from_user.id,
-                           'Напишите контактный номер менеджера арки'
+                           'Напишите контактный номер менеджера арки\n Например: +998 71 200 0000'
                            )
     await Clients_States.contact_number_client_state.set()
 
+ 
+
 @dp.message_handler(content_types=['text'], state= Clients_States.contact_number_client_state)
 async def save_date_contact_number(msg: types.Message, state: FSMContext):
-    await state.update_data(client_contact_number = msg.text)
+    try:
+        phone =  phonenumbers.format_number(phonenumbers.parse(msg.text, None), phonenumbers.PhoneNumberFormat.INTERNATIONAL)
+        await state.update_data(client_contact_number = phone)
+        await bot.send_message(msg.from_user.id,'Наименование организации')
+        await Clients_States.organization_name_client_state.set()
+    except:
+        await bot.send_message(msg.from_user.id,'Неправильно введен номер')
+        await bot.send_message(msg.from_user.id,
+                           'Напишите контактный номер менеджера арки\n Например: +998 71 200 0000'
+                           )
+        await Clients_States.contact_number_client_state.set()
 
-    await bot.send_message(msg.from_user.id,'Наименование организации')
-    await Clients_States.organization_name_client_state.set()
+
 
 
 @dp.message_handler(content_types=['text'], state= Clients_States.organization_name_client_state)
@@ -191,7 +207,7 @@ async def save_date_organization(msg: types.Message, state: FSMContext):
 async def save_version_iiko(msg: types.Message, state: FSMContext):
     await state.update_data(client_version_iiko = msg.text)
     await bot.send_message(msg.from_user.id,
-                        'Напишите ФИО клиента'
+                        'Фио контактного лица клинта'
                         )
     await Clients_States.contact_client_state.set()
 
@@ -218,62 +234,72 @@ async def save_date_conf_client(msg: types.Message, state: FSMContext):
 async def save_contact_client(msg: types.Message, state: FSMContext):
     await state.update_data(client_contact_client = msg.text)
     await bot.send_message(msg.from_user.id,
-                                'Напишите номер телефона клиента'
+                                'Напишите номер телефона клиента\n Например: +998 71 200 0000'
                                 )
     await Clients_States.contact_client_phone_state.set()
 
 @dp.message_handler(content_types=['text'], state=Clients_States.contact_client_phone_state)
 async def save_contact_client(msg: types.Message, state: FSMContext):
-    await state.update_data(contact_client_phone_state = msg.text)
+    try:
+        formatted_num = phonenumbers.format_number(phonenumbers.parse(msg.text, None), phonenumbers.PhoneNumberFormat.INTERNATIONAL)
     
-    data = await state.get_data()
-    if data['client_choose'] == 1:
-        await bot.send_message(msg.from_user.id,
-                            'Напишите адрес\n'+
-                            'Например: страна Казахстан, город Алматы, улица Таугуль, дом 33б'
-                            )
-        await Clients_States.adress_client_state.set()
-    else:
-        n = 1
-        for file in os.listdir():
-            if f"{data['client_name']} {data['client_id']}" in file:
-                n+=1
-        file_name = f"{data['client_name']} {data['client_id']} C{n}.txt" 
 
-        save_data( file_name = file_name, 
-                    client_name = data['client_name'],
-                    client_id = data['client_id'],
-                    client_fio = data['client_fio'],
-                    client_contact_number = data['client_contact_number'],
-                    client_client_organization_name = data['client_organization_name'],
-                    client_choose = data['client_choose'], 
-                    client_contact_client =data['client_contact_client'] ,
-                    contact_client_phone_state = data['contact_client_phone_state'],
-                    count_cass_client_state = data['count_cass_client_state'],
-                    client_msg_date = data['client_msg_date'],
-                    client_conf = data['client_conf'] 
-                )
-        await bot.send_message(chat_id = group_chat_id , 
-                           text="Появилась заявка для 1C интеграции"
+        await state.update_data(contact_client_phone_state = formatted_num)
+        
+        data = await state.get_data()
+        if data['client_choose'] == 1:
+            await bot.send_message(msg.from_user.id,
+                                'Напишите адрес\n'+
+                                'Например: страна Казахстан, город Алматы, улица Таугуль, дом 33б'
+                                )
+            await Clients_States.adress_client_state.set()
+        else:
+            n = 1
+            for file in os.listdir():
+                if f"{data['client_name']} {data['client_id']}" in file:
+                    n+=1
+            file_name = f"{data['client_name']} {data['client_id']} C{n}.txt" 
+
+            save_data( file_name = file_name, 
+                        client_name = data['client_name'],
+                        client_id = data['client_id'],
+                        client_fio = data['client_fio'],
+                        client_contact_number = data['client_contact_number'],
+                        client_client_organization_name = data['client_organization_name'],
+                        client_choose = data['client_choose'], 
+                        client_contact_client =data['client_contact_client'] ,
+                        contact_client_phone_state = data['contact_client_phone_state'],
+                        count_cass_client_state = data['count_cass_client_state'],
+                        client_msg_date = data['client_msg_date'],
+                        client_conf = data['client_conf'] 
+                    )
+            await bot.send_message(chat_id = group_chat_id , 
+                            text="Появилась заявка для 1C интеграции"
+                            )
+            with open('notifications_1C.txt','a',encoding='utf-8') as file:
+                file.writelines(f"{data['client_name']}//{data['client_msg_date']}//{data['client_id']}//C{n}\n") 
+
+            await bot.send_message(msg.from_user.id,
+                            'Ваша заявка отправлена\n'+
+                            'Скоро вам придет ответ специалиста'
+                            )
+            # View task 
+            with open(f"{file_name}", encoding='utf-8') as file:
+                file_text = file.readlines()
+            task = ''
+            for i in range(len(file_text)):
+                if i != 0:
+                    task += file_text[i]
+            await bot.send_message(chat_id = group_chat_id , 
+                                text=task
+                                )
+            await state.finish()
+    except:
+        await bot.send_message(msg.from_user.id, 'Не правильно введен номер')
+        await bot.send_message(msg.from_user.id,
+                           'Напишите номер телефона клиента\n Например: +998 71 200 0000'
                            )
-        with open('notifications_1C.txt','a',encoding='utf-8') as file:
-            file.writelines(f"{data['client_name']}//{data['client_msg_date']}//{data['client_id']}//C{n}\n") 
-
-        await bot.send_message(msg.from_user.id,
-                        'Ваша заявка отправлена\n'+
-                        'Скоро вам придет ответ специалиста'
-                        )
-        # View task 
-        with open(f"{file_name}", encoding='utf-8') as file:
-            file_text = file.readlines()
-        task = ''
-        for i in range(len(file_text)):
-            if i != 0:
-                task += file_text[i]
-        await bot.send_message(chat_id = group_chat_id , 
-                            text=task
-                            )
-        await state.finish()
+        await Clients_States.contact_client_phone_state.set()
 
 @dp.message_handler(content_types=['text'], state=Clients_States.adress_client_state)
 async def save_adress(msg: types.Message, state: FSMContext):
@@ -325,7 +351,8 @@ def save_data( file_name,
           file.writelines(f"Контактный номер клиента:: {contact_client_phone_state}\n")
           file.writelines(f"Данная заявка была отправлена:: {client_msg_date}\n")
 
-group_chat_id = -1001840340665
+group_chat_id = -910221550
+
 @dp.message_handler(content_types=['text'], state=Clients_States.date_client_state)
 async def save_dates(msg: types.Message, state: FSMContext):
     data = await state.get_data()
@@ -336,7 +363,7 @@ async def save_dates(msg: types.Message, state: FSMContext):
     for file in os.listdir():
         if f"{data['client_name']} {data['client_id']}" in file:
             n+=1
-    group_chat_id = -1001840340665
+    group_chat_id = -910221550
 
     file_name = f"{data['client_name']} {data['client_id']} I{n}.txt" 
 
@@ -440,19 +467,25 @@ async def instruction_for_add(callback_query: types.CallbackQuery):
 async def update_spec(msg=types.Message, state=FSMContext):
     with open('./specialist_list.txt', encoding='utf-8') as file:
         specialist_list = file.readlines()
-
+    drop = '1'
     for line in specialist_list:
         if f'{msg.text}'  in line:
             drop = line
             specialist_list.remove(line)
+           
         
     print(specialist_list)
     with open('./specialist_list.txt','w', encoding='utf-8') as file:
         for line in specialist_list:
             file.writelines(line)
-    await bot.send_message(chat_id=msg.from_user.id, 
-                           text= f'Вы успешно удалили специалиста:\n{drop}'
+    if drop == '1':
+        await bot.send_message(chat_id=msg.from_user.id, 
+                           text= f'Нет такого специалиста: {msg.text}' 
                             )
+    else:
+        await bot.send_message(chat_id=msg.from_user.id, 
+                            text= f'Вы успешно удалили специалиста:\n{drop}'
+                                )
     await state.finish()
 # удалит специалистов
 @dp.callback_query_handler(lambda c: c.data == 'edit_spec')
