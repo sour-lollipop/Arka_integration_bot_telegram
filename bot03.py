@@ -46,7 +46,10 @@ choose_iiko_1c_for_cpec_KB = InlineKeyboardMarkup(row_width=1).row(button_iiko_c
 # кнопки для специалистов, чтоб смотреть список специалистов и добавлять их 
 list_of_spec = InlineKeyboardButton('Список специалистов',callback_data="list_of_spec")
 add_spec = InlineKeyboardButton('Добавить специалиста',callback_data="add_spec")
-spec_kb = InlineKeyboardMarkup(row_width=1).row(list_of_spec,add_spec)
+drop_spec = InlineKeyboardButton('Удалить специалиста',callback_data="drop_spec")
+edit_spec = InlineKeyboardButton('Поменять свое имя',callback_data="edit_spec")
+
+spec_kb = InlineKeyboardMarkup(row_width=1).row(list_of_spec,add_spec).row(edit_spec,drop_spec)
 # кнопки для специалистов, чтоб смотреть список принятых заявок
 accec_iiko_tsak = InlineKeyboardButton('Iiko',callback_data="accec_iiko_tsak")
 accec_1C_tsak = InlineKeyboardButton('1С',callback_data="accec_1C_tsak")
@@ -78,6 +81,8 @@ class Clients_States(StatesGroup):
 
 class Specialist_States(StatesGroup):
     add_spec_state = State()
+    drop_spec_state = State()
+    edit_spec_state = State()
     comment_state = State()
     comment_state_1C = State()
    
@@ -103,10 +108,10 @@ async def start_command(msg: types.Message, state: FSMContext):
                                text='Выберете свое направление и понему появится список принятых заявок:',
                                reply_markup=acceces_task)
         await bot.send_message(msg.from_user.id,
-                        text=f'Вы можете просмотреть список специалистов или добавить специалиста\n', 
+                        text=f'Вы можете просмотреть список специалистов, добавить специалиста или его удалить. Также вы можете поменять свое имя как специалиста(по умолчанию используется имя вашего аккаунта)\n', 
                         reply_markup= spec_kb
                         )
-
+    
     else:    
     # кнопки для клиентов   
         await bot.send_message(msg.from_user.id,
@@ -151,7 +156,7 @@ async def save_date_fio(msg: types.Message, state: FSMContext):
     await state.update_data(client_name = msg.from_user.first_name,
                             client_id = msg.from_user.id,
                             client_fio = msg.text,
-                            client_msg_date = msg.date.strftime('%w %B %H:%M')
+                            client_msg_date = msg.date.strftime('%d %B %H:%M')
                             )
     await bot.send_message(msg.from_user.id,
                            'Напишите контактный номер менеджера арки'
@@ -162,7 +167,7 @@ async def save_date_fio(msg: types.Message, state: FSMContext):
 async def save_date_contact_number(msg: types.Message, state: FSMContext):
     await state.update_data(client_contact_number = msg.text)
 
-    await bot.send_message(msg.from_user.id,'Напишите имя организации')
+    await bot.send_message(msg.from_user.id,'Наименование организации')
     await Clients_States.organization_name_client_state.set()
 
 
@@ -205,7 +210,7 @@ async def save_date_conf_client(msg: types.Message, state: FSMContext):
     await state.update_data(count_cass_client_state = msg.text,)
 
     await bot.send_message(msg.from_user.id,
-                            'Напишите ФИО клиента'
+                            'Фио контактного лица клинта'
                             )
     await Clients_States.contact_client_state.set()
 
@@ -213,7 +218,7 @@ async def save_date_conf_client(msg: types.Message, state: FSMContext):
 async def save_contact_client(msg: types.Message, state: FSMContext):
     await state.update_data(client_contact_client = msg.text)
     await bot.send_message(msg.from_user.id,
-                                'Напишите номер клиента'
+                                'Напишите номер телефона клиента'
                                 )
     await Clients_States.contact_client_phone_state.set()
 
@@ -317,7 +322,7 @@ def save_data( file_name,
 
     with open(f"{file_name}",'a', encoding='utf-8') as file:
           file.writelines(f"Имя клиента:: {client_contact_client}\n")
-          file.writelines(f"Контактный номер телефона:: {contact_client_phone_state}\n")
+          file.writelines(f"Контактный номер клиента:: {contact_client_phone_state}\n")
           file.writelines(f"Данная заявка была отправлена:: {client_msg_date}\n")
 
 group_chat_id = -1001840340665
@@ -422,6 +427,47 @@ async def list_of_spec(callback_query: types.CallbackQuery):
                 cpec_list+='\n'
             
         await callback_query.message.answer( f'Список специалистов:\n {cpec_list}')
+# удалит специалистов
+@dp.callback_query_handler(lambda c: c.data == 'drop_spec')
+async def instruction_for_add(callback_query: types.CallbackQuery):
+        await callback_query.message.answer(text =  f'Ввидите id специалиста'+ 
+                                            'которого хотите удалить\n'+
+                                            'например: 123456789 '
+                                            )
+        await Specialist_States.drop_spec_state.set()
+
+@dp.message_handler(content_types=['text'], state=Specialist_States.drop_spec_state)
+async def update_spec(msg=types.Message, state=FSMContext):
+    with open('./specialist_list.txt', encoding='utf-8') as file:
+        specialist_list = file.readlines()
+
+    for line in specialist_list:
+        if f'{msg.text}'  in line:
+            drop = line
+            specialist_list.remove(line)
+        
+    print(specialist_list)
+    with open('./specialist_list.txt','w', encoding='utf-8') as file:
+        for line in specialist_list:
+            file.writelines(line)
+    await bot.send_message(chat_id=msg.from_user.id, 
+                           text= f'Вы успешно удалили специалиста:\n{drop}'
+                            )
+    await state.finish()
+# удалит специалистов
+@dp.callback_query_handler(lambda c: c.data == 'edit_spec')
+async def instruction_for_add(callback_query: types.CallbackQuery):
+        await callback_query.message.answer(text =  f'Ввидите новое имя')
+        await Specialist_States.edit_spec_state.set()
+
+@dp.message_handler(content_types=['text'], state=Specialist_States.edit_spec_state)
+async def update_spec(msg=types.Message, state=FSMContext):
+    await state.update_data(cpec_name_new = msg.text )
+    
+    await bot.send_message(chat_id=msg.from_user.id, 
+                           text= f'Вы успешно поменяли свое имя на:\n{msg.text}'
+                            )
+    await state.finish()
 # ******************************************        
 # ******************************************        
 # ******************************************        
@@ -495,8 +541,11 @@ async def receive_task(callback_query: types.CallbackQuery, state: FSMContext):
     await bot.send_message(int(data["client_id"]), 'Заявка:')
     await bot.send_message(int(data["client_id"]), data['client_task'])
 
-
-    await bot.send_message(group_chat_id, 'Данная заявка была принята')
+    try:
+        name = data['cpec_name_new']
+    except:
+        name = callback_query.from_user.first_name
+    await bot.send_message(group_chat_id, f"{name}: Данная заявка была принята")
     await bot.send_message(group_chat_id, data['client_task'])
 
     os.remove(f'./{data["client_file"]}')
@@ -546,8 +595,11 @@ async def send_comment(msg: types.Message, state: FSMContext):
     await bot.send_message(int(data["client_id"]), data['client_task'])
     await bot.send_message(int(data["client_id"]), f'Комментарий специалиста\n{msg.text}')
 
-
-    await bot.send_message(group_chat_id, 'Данная заявка не принято:')
+    try:
+        name = data['cpec_name_new']
+    except:
+        name = msg.from_user.first_name
+    await bot.send_message(group_chat_id, f'{name}: Данная заявка не принято:')
     await bot.send_message(group_chat_id, data['client_task'])
     await bot.send_message(group_chat_id, f'Причина:\n{msg.text}')
 
@@ -566,6 +618,7 @@ async def send_comment(msg: types.Message, state: FSMContext):
                     post["manager_phone"],
                     post["organization"],
                     post["client_name"],
+                    post["client_phone"],
                     post["type"],
                     post["task_date"],
                     post["status"]
@@ -647,6 +700,7 @@ async def save_db_closed_tasks(callback_query: types.CallbackQuery, state: FSMCo
                     post["manager_phone"],
                     post["organization"],
                     post["client_name"],
+                    post["client_phone"],
                     post["type"],
                     post["task_date"],
                     post["status"]
@@ -678,6 +732,7 @@ async def save_db_regected_tasks(callback_query: types.CallbackQuery, state: FSM
                     post["manager_phone"],
                     post["organization"],
                     post["client_name"],
+                    post["client_phone"],
                     post["type"],
                     post["task_date"],
                     post["status"]
@@ -758,7 +813,11 @@ async def receive_task_1C(callback_query: types.CallbackQuery, state: FSMContext
     await bot.send_message(int(data["client_id"]), 'Заявка:')
     await bot.send_message(int(data["client_id"]), data['client_task'])
     
-    await bot.send_message(group_chat_id, 'Данная заявка была принята')
+    try:
+        name = data['cpec_name_new']
+    except:
+        name = callback_query.from_user.first_name
+    await bot.send_message(group_chat_id, f'{name}: Данная заявка была принята')
     await bot.send_message(group_chat_id, data['client_task'])
 
     os.remove(f'./{data["client_file"]}')
@@ -775,10 +834,6 @@ async def receive_task_1C(callback_query: types.CallbackQuery, state: FSMContext
         for line in notifications:
             file.writelines(line)
 
-    print(data["client_file"])
-    print(data["client_id"])
-    print(data["client_name"])
-    print(data["client_task_number"])
     await state.finish()
 
 
@@ -805,7 +860,11 @@ async def send_comment_1C(msg: types.Message, state: FSMContext):
     await bot.send_message(int(data["client_id"]), data['client_task'])
     await bot.send_message(int(data["client_id"]), f'Комментарий специалиста\n{msg.text}')
 
-    await bot.send_message(group_chat_id, 'Данная заявка не принято:')
+    try:
+        name = data['cpec_name_new']
+    except:
+        name = msg.from_user.first_name
+    await bot.send_message(group_chat_id, f'{name}: Данная заявка не принято:')
     await bot.send_message(group_chat_id, data['client_task'])
     await bot.send_message(group_chat_id, f'Причина:\n{msg.text}')
 
@@ -824,6 +883,7 @@ async def send_comment_1C(msg: types.Message, state: FSMContext):
                     post["manager_phone"],
                     post["organization"],
                     post["client_name"],
+                    post["client_phone"],
                     post["type"],
                     post["task_date"],
                     post["status"]
