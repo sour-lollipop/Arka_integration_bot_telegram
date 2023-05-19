@@ -3,7 +3,9 @@ from aiogram import Bot,Dispatcher,executor,types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
+import markups as nav
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from translations import _
 import os
 import locale
 from google.oauth2.service_account import Credentials
@@ -15,6 +17,7 @@ import phonenumbers
 client = MongoClient('mongodb+srv://akmaral:aktolkyn2018@clusterarkabot.obnb02f.mongodb.net/test')
 db = client.Clients_applications_DB
 collection = db.applications_collection
+users_collection = db.users_collection
 
 scope = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/spreadsheets"]
 creds = Credentials.from_service_account_file("./fluted-union-384407-f6335f10cab3.json", scopes=scope)
@@ -27,47 +30,10 @@ locale.setlocale(locale.LC_ALL, '')
 # Configure logging
 logging.basicConfig(level = logging.INFO)
 # Initialize bot and storage
-bot = Bot(token = '5924382439:AAGLwM6sUPbY_cVxmOKzT_xf3b-PaUesZPs')
+# bot = Bot(token = '5924382439:AAGLwM6sUPbY_cVxmOKzT_xf3b-PaUesZPs')
+# test bot token
+bot = Bot(token="6027542967:AAH634BtIzZSQiYOIn33WcV1-RQ_9v7bfk0")
 dp = Dispatcher(bot, storage = MemoryStorage())
-# остановить все процессы
-stop = InlineKeyboardButton("стоп", callback_data='stop')
-aboute = InlineKeyboardButton("о боте", callback_data='about')
-base_KB = InlineKeyboardMarkup(row_width=1).row(aboute, stop)
-# Кнопки для клиентов, чтоб выбирали куда заявку писать
-button_iiko = InlineKeyboardButton('Iiko', callback_data='Iiko')
-button_1c = InlineKeyboardButton('1C', callback_data='1C')
-choose_iiko_1c_KB = InlineKeyboardMarkup(row_width=1).row(button_1c, button_iiko).row(stop,aboute)
-
-
-
-# кнопки для специалистов, чтоб смотреть заявки
-button_iiko_cpec = InlineKeyboardButton('Iiko', callback_data='Iiko_cpec')
-button_1c_cpec = InlineKeyboardButton('1C', callback_data='1C_cpec')
-choose_iiko_1c_for_cpec_KB = InlineKeyboardMarkup(row_width=1).row(button_iiko_cpec, button_1c_cpec)
-
-# кнопки для специалистов, чтоб смотреть список специалистов и добавлять их 
-list_of_spec = InlineKeyboardButton('Список специалистов',callback_data="list_of_spec")
-add_spec = InlineKeyboardButton('Добавить специалиста',callback_data="add_spec")
-drop_spec = InlineKeyboardButton('Удалить специалиста',callback_data="drop_spec")
-edit_spec = InlineKeyboardButton('Поменять свое имя',callback_data="edit_spec")
-
-spec_kb = InlineKeyboardMarkup(row_width=1).row(list_of_spec,add_spec).row(edit_spec,drop_spec)
-# кнопки для специалистов, чтоб смотреть список принятых заявок
-accec_iiko_tsak = InlineKeyboardButton('Iiko',callback_data="accec_iiko_tsak")
-accec_1C_tsak = InlineKeyboardButton('1С',callback_data="accec_1C_tsak")
-acceces_task = InlineKeyboardMarkup(row_width=1).row(accec_iiko_tsak,accec_1C_tsak)
-
-
-
-# кнопки для принятия или отказа заявки
-yes_iiko = InlineKeyboardButton(text="Принять", callback_data="iiko_btn_Yes")
-no_iiko = InlineKeyboardButton(text="Отклонить", callback_data="iiko_btn_No")    
-option_for_iiko_KB = InlineKeyboardMarkup(row_width=1).add(yes_iiko, no_iiko)
-
-yes_1C = InlineKeyboardButton(text="Принять", callback_data="1C_btn_Yes")
-no_1C = InlineKeyboardButton(text="Отклонить", callback_data="1C_btn_No")    
-option_for_1C_KB = InlineKeyboardMarkup(row_width=1).add(yes_1C, no_1C)
-
 
 class Clients_States(StatesGroup):
     fio_client_state = State()
@@ -88,6 +54,7 @@ class Specialist_States(StatesGroup):
     edit_spec_state = State()
     comment_state = State()
     comment_state_1C = State()
+    change_group_chat_id_state = State()
    
 
 # @dp.message_handler(content_types=['new_chat_members'])
@@ -100,63 +67,105 @@ class Specialist_States(StatesGroup):
 @dp.message_handler(commands=['start'], state='*')
 async def start_command(msg: types.Message, state: FSMContext):
     await state.finish()
+    # насроийки языка
     # кнопки для специалистов
-    if str(msg.from_user.id) in cpecialist_list():
-        await bot.send_message(msg.from_user.id,
-                        text=f'Добро пожаловать {msg.from_user.first_name}!\n'+ 
-                                ' Выберите свое направление, и появится список заявок.',
-                        reply_markup=choose_iiko_1c_for_cpec_KB
-                        )
-        await bot.send_message(msg.from_user.id,
-                               text='Выберете свое направление и появится список принятых заявок:',
-                               reply_markup=acceces_task)
-        await bot.send_message(msg.from_user.id,
-                        text=f'Вы можете просмотреть список специалистов, добавить специалиста или его удалить. Также вы можете поменять свое имя как специалиста(по умолчанию используется имя вашего аккаунта)\n', 
-                        reply_markup= spec_kb
-                        )
     
-    else:    
-    # кнопки для клиентов   
-        await bot.send_message(msg.from_user.id,
-                                text=f'Добро пожаловать {msg.from_user.first_name}!\n'+ 
-                                        'Создать заявку для интеграции'
-                                ,reply_markup=choose_iiko_1c_KB
-                                )
+    if  users_collection.find_one({'user_id':f'{msg.from_user.id}'}):
+        lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
+        if str(msg.from_user.id) in cpecialist_list():
+            await bot.send_message(msg.from_user.id,
+                            text=f'{_("Добро пожаловать",lang)} {msg.from_user.first_name}!\n'+ 
+                                    _("Выберите свое направление, и появится список заявок.", lang),
+                            reply_markup=nav.choose_iiko_1c_(lang)
+                            )
+            await bot.send_message(msg.from_user.id,
+                                text=_('Выберете свое направление и появится список принятых заявок',lang),
+                                reply_markup=nav.acceces_task_KB)
+            await bot.send_message(msg.from_user.id,
+                            text=_("Вы можете просмотреть список специалистов, добавить специалиста или его удалить. Также вы можете поменять свое имя как специалиста(по умолчанию используется имя вашего аккаунта)",lang),
+                            reply_markup= nav.spec_(lang)
+                            )
+            await bot.send_message(msg.from_user.id,
+                            text=_("Поменять язык: ", lang),
+                            reply_markup=nav.lang_KB
+                            )
         
+        else:    
+        # кнопки для клиентов   
+            text1 = _('Добро пожаловать', lang) 
+            text2 = _('Создать заявку для интеграции',lang)
+            await bot.send_message(msg.from_user.id,
+                                    text=f'{text1} {msg.from_user.first_name}!\n {text2}'
+                                    ,reply_markup=nav.choose_iiko_1c_(lang)
+                                    )
+            await bot.send_message(msg.from_user.id,
+                            text=_('Поменять язык: ',lang),
+                            reply_markup=nav.lang_KB
+                            )
+
+    else:
+        await bot.send_message(msg.from_user.id,
+                        text='Choose language:',
+                        reply_markup=nav.lang_KB
+                        )
+
+
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('lang'))
+async def choose_lang(callback_query: types.CallbackQuery):
+    language = callback_query.data.split('_')[1]
+    print(language)
+    if  users_collection.find_one({'user_id':f'{callback_query.from_user.id}'}):
+        users_collection.update_one({'user_id': f'{callback_query.from_user.id}'}, {'$set': {'language': language}})
+    else:
+        user = {
+            'username': f'{callback_query.from_user.first_name}',
+            'user_id': f'{callback_query.from_user.id}',
+            'language': language
+        }
+        users_collection.insert_one(user)
+    await callback_query.message.answer(_('Вы успешно поменяли язык на русский.',language))
+    await callback_query.message.answer(_('Отправье команду /start еще раз.',language))
+    
+
 @dp.callback_query_handler(lambda c: c.data == 'stop', state='*')
 async def stop_process(callback_query: types.CallbackQuery, state: FSMContext):
     await state.finish()
-    await  callback_query.message.answer('Вы остановили все процессы')
+    lang = users_collection.find_one({'user_id':f'{callback_query.from_user.id}'})['language']
+    await  callback_query.message.answer(_("Вы остановили все процессы", lang))
 
 @dp.message_handler(commands=['stop'], state='*')
 async def stop_command(msg: types.Message, state: FSMContext):
-    await  bot.send_message(msg.from_user.id,'Вы остановили все процессы')
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
+    await  bot.send_message(msg.from_user.id, _("Вы остановили все процессы", lang))
     await state.finish()
 
 @dp.callback_query_handler(lambda c: c.data == 'about')
 async def stop_process(callback_query: types.CallbackQuery, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{callback_query.from_user.id}'})['language']
     await state.finish()
-    await  callback_query.message.answer('В данном боте вы можете создать заявки'+
-                                         ' для интеграции 1С или Iiko. Для этого'+
-                                         ' вам всего лишь нужно ответить на несколько вопросов'
+    await  callback_query.message.answer(
+    _("В данном боте вы можете создать заявки для интеграции 1С или Iiko. Для этого вам всего лишь нужно ответить на несколько вопросов",lang)        
                                          )
 
 @dp.callback_query_handler(lambda c: c.data == 'Iiko')
 async def Start_to_create_Iiko(callback_query: types.CallbackQuery, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{callback_query.from_user.id}'})['language']
     await state.finish()
     await state.update_data(client_choose = 1)
-    await  callback_query.message.answer('Напишите ФИО менеджера арки')
+    await  callback_query.message.answer(_("Напишите ФИО менеджера арки",lang))
     await Clients_States.fio_client_state.set()
 
 @dp.callback_query_handler(lambda c: c.data == '1C')
 async def Start_to_create_1C(callback_query: types.CallbackQuery, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{callback_query.from_user.id}'})['language']
     await state.finish()
     await state.update_data(client_choose = 2)
-    await  callback_query.message.answer('Напишите ФИО менеджера арки')
+    await  callback_query.message.answer(_("Напишите ФИО менеджера арки",lang))
     await Clients_States.fio_client_state.set()
 
 @dp.message_handler(content_types=['text'], state= Clients_States.fio_client_state)
 async def save_date_fio(msg: types.Message, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
 
     await state.update_data(client_name = msg.from_user.first_name,
                             client_id = msg.from_user.id,
@@ -164,7 +173,7 @@ async def save_date_fio(msg: types.Message, state: FSMContext):
                             client_msg_date = msg.date.strftime('%d %B %H:%M')
                             )
     await bot.send_message(msg.from_user.id,
-                           'Напишите контактный номер менеджера арки\n Например: +998 71 200 0000'
+    _("Напишите контактный номер менеджера арки\n Например: +998 71 200 0000" , lang)
                            )
     await Clients_States.contact_number_client_state.set()
 
@@ -172,15 +181,16 @@ async def save_date_fio(msg: types.Message, state: FSMContext):
 
 @dp.message_handler(content_types=['text'], state= Clients_States.contact_number_client_state)
 async def save_date_contact_number(msg: types.Message, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     try:
         phone =  phonenumbers.format_number(phonenumbers.parse(msg.text, None), phonenumbers.PhoneNumberFormat.INTERNATIONAL)
         await state.update_data(client_contact_number = phone)
-        await bot.send_message(msg.from_user.id,'Наименование организации')
+        await bot.send_message(msg.from_user.id,_('Наименование организации', lang))
         await Clients_States.organization_name_client_state.set()
     except:
-        await bot.send_message(msg.from_user.id,'Неправильно введен номер')
+        await bot.send_message(msg.from_user.id, _("Неправильно введен номер", lang))
         await bot.send_message(msg.from_user.id,
-                           'Напишите контактный номер менеджера арки\n Например: +998 71 200 0000'
+                           _("Напишите контактный номер менеджера арки\n Например: +998 71 200 0000", lang)
                            )
         await Clients_States.contact_number_client_state.set()
 
@@ -189,57 +199,121 @@ async def save_date_contact_number(msg: types.Message, state: FSMContext):
 
 @dp.message_handler(content_types=['text'], state= Clients_States.organization_name_client_state)
 async def save_date_organization(msg: types.Message, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     await state.update_data(client_organization_name = msg.text)
     data = await state.get_data()
     if data['client_choose'] == 1:
-        await  bot.send_message(msg.from_user.id,'Введите версию Iiko\n'+
-                                'Например: Iiko v 1.2.734')
+        await  bot.send_message(msg.from_user.id, f'{_("Введите версию Iiko",lang)}\n'+
+                                f'{_("Например: Iiko v 1.2.734", lang)}')
         await Clients_States.version_iiko_client_state.set()
     else:
-        await  bot.send_message(msg.from_user.id,'Какая у вас конфигурация данных?'+
-                                '(версия, редакцию, типовая или доработанная)\n'+
-                                'Например: Управление торговлей, редакция 11.4.8')
+        await  bot.send_message(msg.from_user.id,
+                                f'{_("Какая у вас конфигурация данных(версия, редакцию, типовая или доработанная)?", lang)}\n' +
+                                f'{_("Например: Управление торговлей, редакция 11.4.8", lang)}')
         await Clients_States.conf_client_state.set()
 
 
 
 @dp.message_handler(content_types=['text'], state=Clients_States.version_iiko_client_state)
 async def save_version_iiko(msg: types.Message, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     await state.update_data(client_version_iiko = msg.text)
     await bot.send_message(msg.from_user.id,
-                        'Фио контактного лица клиента'
+                        _("Фио контактного лица клиента", lang)
                         )
     await Clients_States.contact_client_state.set()
 
 
 @dp.message_handler(content_types=['text'], state=Clients_States.conf_client_state)
 async def save_date_conf_client(msg: types.Message, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     await state.update_data(client_conf = msg.text,)
 
     await bot.send_message(msg.from_user.id,
-                            'Напишите количество касс'
+                            _("Напишите количество касс", lang)
                             )
     await Clients_States.count_cass_client_state.set()
 
 @dp.message_handler(content_types=['text'], state=Clients_States.count_cass_client_state)
 async def save_date_conf_client(msg: types.Message, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     await state.update_data(count_cass_client_state = msg.text,)
 
     await bot.send_message(msg.from_user.id,
-                            'Фио контактного лица клиента'
+                            _("Фио контактного лица клиента", lang)
                             )
     await Clients_States.contact_client_state.set()
 
 @dp.message_handler(content_types=['text'], state=Clients_States.contact_client_state)
 async def save_contact_client(msg: types.Message, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     await state.update_data(client_contact_client = msg.text)
     await bot.send_message(msg.from_user.id,
-                                'Напишите номер телефона клиента\n Например: +998 71 200 0000'
+                                _("Напишите номер телефона клиента\n Например: +998 71 200 0000", lang)
                                 )
     await Clients_States.contact_client_phone_state.set()
 
+def save_data( file_name, 
+                    client_name,
+                    client_id,
+                    client_fio,
+                    client_contact_number,
+                    client_client_organization_name, 
+                    client_choose,
+                    client_contact_client,
+                    contact_client_phone_state,
+                    client_msg_date,
+                    client_date= 'None',
+                    client_adress= 'None',
+                    client_version_iiko = 'None',
+                    client_conf = 'None',
+                    count_cass_client_state = 'None'
+                  ):
+    with open(f"{file_name}",'w', encoding='utf-8') as file:
+          file.writelines(f"Ник и id клиента:: {client_name} {client_id}\n")
+          file.writelines(f"ФИО менеджера:: {client_fio}\n")
+          file.writelines(f"Контактный номер менеджера:: {client_contact_number}\n")
+          file.writelines(f"Имя организации:: {client_client_organization_name}\n")
+    task = {
+        'username': client_name,
+        'userid': client_id,
+        'fio_menedjer': client_fio,
+        'contact_number_menedjer': client_contact_number,
+        'organization_name' : client_client_organization_name,
+        'fio_client': client_contact_client,
+        'contact_number_client' : contact_client_phone_state
+    }
+
+    if client_choose == 1:
+        with open(f"{file_name}",'a', encoding='utf-8') as file:
+            file.writelines(f"Версия Iiko:: {client_version_iiko}\n")
+            file.writelines(f"Время установки:: {client_date}\n")
+            file.writelines(f"Адрес установки:: {client_adress}\n")
+        task['task_type'] = 'Iiko'
+        task['Iiko_version'] = client_version_iiko
+        task['install_date'] = client_date
+        task['adress_install_date'] = client_adress
+
+
+    elif client_choose == 2:
+        with open(f"{file_name}",'a', encoding='utf-8') as file:
+            file.writelines(f"Конфигурация данных:: {client_conf}\n")
+            file.writelines(f"Количество касс:: {count_cass_client_state}\n")
+        task['task_type'] = '1C'
+        task['data_config'] = client_conf
+        task['cass_count'] = count_cass_client_state
+
+    with open(f"{file_name}",'a', encoding='utf-8') as file:
+          file.writelines(f"Имя клиента:: {client_contact_client}\n")
+          file.writelines(f"Контактный номер клиента:: {contact_client_phone_state}\n")
+          file.writelines(f"Данная заявка была отправлена:: {client_msg_date}\n")
+    task['task_date'] = client_msg_date
+    task['status'] = 'holver'
+    collection.insert_one(task)
+
 @dp.message_handler(content_types=['text'], state=Clients_States.contact_client_phone_state)
 async def save_contact_client(msg: types.Message, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     try:
         formatted_num = phonenumbers.format_number(phonenumbers.parse(msg.text, None), phonenumbers.PhoneNumberFormat.INTERNATIONAL)
     
@@ -249,8 +323,8 @@ async def save_contact_client(msg: types.Message, state: FSMContext):
         data = await state.get_data()
         if data['client_choose'] == 1:
             await bot.send_message(msg.from_user.id,
-                                'Напишите адрес\n'+
-                                'Например: страна Казахстан, город Алматы, улица Таугуль, дом 33б'
+                                f'{_("Напишите адрес", lang)}\n'+
+                                f'{_("Например: страна Казахстан, город Алматы, улица Таугуль, дом 33б", lang)}'
                                 )
             await Clients_States.adress_client_state.set()
         else:
@@ -274,14 +348,14 @@ async def save_contact_client(msg: types.Message, state: FSMContext):
                         client_conf = data['client_conf'] 
                     )
             await bot.send_message(chat_id = group_chat_id , 
-                            text="Появилась заявка для 1C интеграции"
+                            text=_("Появилась заявка для 1C интеграции", lang)
                             )
             with open('notifications_1C.txt','a',encoding='utf-8') as file:
                 file.writelines(f"{data['client_name']}//{data['client_msg_date']}//{data['client_id']}//C{n}\n") 
 
             await bot.send_message(msg.from_user.id,
-                            'Ваша заявка отправлена\n'+
-                            'Скоро вам придет ответ специалиста'
+                            f'{_("Ваша заявка отправлена", lang)}\n'+
+                            _("Скоро вам придет ответ специалиста", lang)
                             )
             # View task 
             with open(f"{file_name}", encoding='utf-8') as file:
@@ -295,66 +369,29 @@ async def save_contact_client(msg: types.Message, state: FSMContext):
                                 )
             await state.finish()
     except:
-        await bot.send_message(msg.from_user.id, 'Не правильно введен номер')
+        await bot.send_message(msg.from_user.id, _("Неправильно введен номер", lang))
         await bot.send_message(msg.from_user.id,
-                           'Напишите номер телефона клиента\n Например: +998 71 200 0000'
+                           _("Напишите номер телефона клиента\n Например: +998 71 200 0000", lang)
                            )
         await Clients_States.contact_client_phone_state.set()
 
 @dp.message_handler(content_types=['text'], state=Clients_States.adress_client_state)
 async def save_adress(msg: types.Message, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     await state.update_data(client_adress = msg.text)
     await bot.send_message(msg.from_user.id,
-                        'Напишите дату установки\n'+
-                        'Например: 28.11.2023 18:00 UTC+6'
+                        f'{_("Напишите дату установки", lang)}\n'+
+                        f'{_("Например: 28.11.2023 18:00 UTC+6", lang)}'
                         )
     await Clients_States.date_client_state.set()
 # ********************************************
 # ********************************************************
 # ********************************************************
 
-def save_data( file_name, 
-                    client_name,
-                    client_id,
-                    client_fio,
-                    client_contact_number,
-                    client_client_organization_name, 
-                    client_choose,
-                    client_contact_client,
-                    contact_client_phone_state,
-                    client_msg_date,
-                    client_date= 'None',
-                    client_adress= 'None',
-                    client_version_iiko = 'None',
-                    client_conf = 'None',
-                    count_cass_client_state = 'None'
-                  ):
-    with open(f"{file_name}",'w', encoding='utf-8') as file:
-          file.writelines(f"Ник и id клиента:: {client_name} {client_id}\n")
-          file.writelines(f"ФИО менеджера:: {client_fio}\n")
-          file.writelines(f"Контактный номер менеджера:: {client_contact_number}\n")
-          file.writelines(f"Имя организации:: {client_client_organization_name}\n")
-
-
-    if client_choose == 1:
-      with open(f"{file_name}",'a', encoding='utf-8') as file:
-        file.writelines(f"Версия Iiko:: {client_version_iiko}\n")
-        file.writelines(f"Время установки:: {client_date}\n")
-        file.writelines(f"Адрес установки:: {client_adress}\n")
-    elif client_choose == 2:
-        with open(f"{file_name}",'a', encoding='utf-8') as file:
-            file.writelines(f"Конфигурация данных:: {client_conf}\n")
-            file.writelines(f"Количество касс:: {count_cass_client_state}\n")
-
-    with open(f"{file_name}",'a', encoding='utf-8') as file:
-          file.writelines(f"Имя клиента:: {client_contact_client}\n")
-          file.writelines(f"Контактный номер клиента:: {contact_client_phone_state}\n")
-          file.writelines(f"Данная заявка была отправлена:: {client_msg_date}\n")
-
-group_chat_id = -910221550
 
 @dp.message_handler(content_types=['text'], state=Clients_States.date_client_state)
 async def save_dates(msg: types.Message, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     data = await state.get_data()
     if data['client_choose'] == 1:
         await state.update_data(client_date = msg.text.lower())
@@ -382,14 +419,14 @@ async def save_dates(msg: types.Message, state: FSMContext):
                 client_version_iiko = data['client_version_iiko'] 
             )
     await bot.send_message(chat_id = group_chat_id , 
-                        text="Появилась заявка для Iiko интеграции"
+                        text=_("Появилась заявка для Iiko интеграции", lang)
                         )
     with open('notifications_Iiko.txt','a',encoding='utf-8') as file:
         file.writelines(f"{data['client_name']}//{data['client_msg_date']}//{data['client_id']}//I{n}\n")  
     
     await bot.send_message(msg.from_user.id,
-                        'Ваша заявка отправлена\n'+
-                        'Скоро вам придет ответ специалиста'
+                        f'{_("Ваша заявка отправлена", lang)}\n'+
+                        f'{_("Скоро вам придет ответ специалиста", lang)}'
                         )
     # View task 
     with open(f"{file_name}", encoding='utf-8') as file:
@@ -405,12 +442,44 @@ async def save_dates(msg: types.Message, state: FSMContext):
 # *************************************
 # *************************************
 # *************************************
-
+# Config commands
 # Просмотреть id чат
 @dp.message_handler(commands=['id'])
 async def send_welcome(message: types.Message):    
     await message.reply(message.chat.id)
-# *******************************************************
+
+group_chat_id = -910221550
+
+@dp.message_handler(commands=['change_group_chat_id'])
+async def change_group_chat_id(msg: types.Message):    
+    if str(msg.from_user.id) in cpecialist_list():
+        await msg.reply('Please write the ID of the group to which the notifications will be sent.')
+        await Specialist_States.change_group_chat_id_state.set()
+    else:
+        await msg.reply("You do not have access.")
+
+@dp.message_handler(content_types=['text'], state=Specialist_States.change_group_chat_id_state)
+async def update_spec(msg=types.Message, state=FSMContext):
+    
+    try:
+        await bot.send_message(chat_id=int(msg.text), 
+                           text= "This group will receive notifications."
+                            )
+        global group_chat_id 
+        group_chat_id = msg.text
+    except:
+        await msg.reply("Its ID does not exist.")
+    await state.finish()
+@dp.message_handler(commands=['all_comands'])
+async def change_group_chat_id(msg: types.Message):    
+    await msg.reply(
+        '/id - view the ID\n'+
+        '/change_group_chat_id - change the ID of the group where notifications will be sent\n'+
+        '/start - start working with the bot\n'+
+        '/stop - stop all processes\n'+
+        '/all_commands - view existing commands\n'
+        )
+
 # *******************************************************
 # *******************************************************
 # составить список специалистов
@@ -426,11 +495,12 @@ def cpecialist_list():
 # добавить специалистов
 @dp.callback_query_handler(lambda c: c.data == 'add_spec')
 async def instruction_for_add(callback_query: types.CallbackQuery):
-        await callback_query.message.answer(text =  f'Введите id и имя специалиста,'+ 
-                                            'которого хотите добавить\n'+
-                                            'например: 123456789 Сергей'
-                                            )
-        await Specialist_States.add_spec_state.set()
+    lang = users_collection.find_one({'user_id':f'{callback_query.from_user.id}'})['language']
+    await callback_query.message.answer(text =  f'Введите id и имя специалиста,'+ 
+                                        'которого хотите добавить\n'+
+                                        'например: 123456789 Сергей'
+                                        )
+    await Specialist_States.add_spec_state.set()
 
 @dp.message_handler(content_types=['text'], state=Specialist_States.add_spec_state)
 async def update_spec(msg=types.Message, state=FSMContext):
@@ -444,24 +514,26 @@ async def update_spec(msg=types.Message, state=FSMContext):
 # Просмотр список специалистов
 @dp.callback_query_handler(lambda c: c.data == 'list_of_spec')
 async def list_of_spec(callback_query: types.CallbackQuery):
-    
-        cpec_list = ''
-        period = 0
-        for cpec in cpecialist_list():
-            period += 1
-            cpec_list+= f"{cpec} "
-            if period%2 == 0:
-                cpec_list+='\n'
-            
-        await callback_query.message.answer( f'Список специалистов:\n {cpec_list}')
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
+
+    cpec_list = ''
+    period = 0
+    for cpec in cpecialist_list():
+        period += 1
+        cpec_list+= f"{cpec} "
+        if period%2 == 0:
+            cpec_list+='\n'
+        
+    await callback_query.message.answer( f'Список специалистов:\n {cpec_list}')
 # удалить специалистов
 @dp.callback_query_handler(lambda c: c.data == 'drop_spec')
 async def instruction_for_add(callback_query: types.CallbackQuery):
-        await callback_query.message.answer(text =  f'Введите id специалиста'+ 
-                                            'которого хотите удалить\n'+
-                                            'например: 123456789 '
-                                            )
-        await Specialist_States.drop_spec_state.set()
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
+    await callback_query.message.answer(text =  f'Введите id специалиста'+ 
+                                        'которого хотите удалить\n'+
+                                        'например: 123456789 '
+                                        )
+    await Specialist_States.drop_spec_state.set()
 
 @dp.message_handler(content_types=['text'], state=Specialist_States.drop_spec_state)
 async def update_spec(msg=types.Message, state=FSMContext):
@@ -490,8 +562,9 @@ async def update_spec(msg=types.Message, state=FSMContext):
 # удалит специалистов
 @dp.callback_query_handler(lambda c: c.data == 'edit_spec')
 async def instruction_for_add(callback_query: types.CallbackQuery):
-        await callback_query.message.answer(text =  f'Введите новое имя')
-        await Specialist_States.edit_spec_state.set()
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
+    await callback_query.message.answer(text =  f'Введите новое имя')
+    await Specialist_States.edit_spec_state.set()
 
 @dp.message_handler(content_types=['text'], state=Specialist_States.edit_spec_state)
 async def update_spec(msg=types.Message, state=FSMContext):
@@ -508,6 +581,7 @@ async def update_spec(msg=types.Message, state=FSMContext):
 @dp.callback_query_handler(lambda c: c.data == 'Iiko_cpec')
 async def iiko_notifications(callback_query: types.CallbackQuery, state: FSMContext):
 
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     nots_iiko_KB = InlineKeyboardMarkup(row_width=1)
 
     with open ('./notifications_Iiko.txt',encoding='utf-8') as file:
@@ -528,6 +602,7 @@ async def iiko_notifications(callback_query: types.CallbackQuery, state: FSMCont
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('notification_iiko'))
 async def iiko_notification(callback_query: types.CallbackQuery, state: FSMContext):
 
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     notification = f"{callback_query.data.split('_')[2]} {callback_query.data.split('_')[3]}"
     print('Notification:', notification)
     task_text = ''
@@ -556,13 +631,14 @@ async def iiko_notification(callback_query: types.CallbackQuery, state: FSMConte
                                     db_type_in = 'Iiko'
                                     )
             await callback_query.message.answer('Принять заявку?', 
-                                                reply_markup=option_for_iiko_KB
+                                                reply_markup=nav.option_for_iiko_KB
                                                 )
     if k == 0:
         await callback_query.message.answer('Данной заявки уже нет')
 
 @dp.callback_query_handler(lambda c: c.data == 'iiko_btn_Yes')
 async def receive_task(callback_query: types.CallbackQuery, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     data = await state.get_data()
     await bot.edit_message_reply_markup(
         chat_id=callback_query.from_user.id,
@@ -608,6 +684,7 @@ async def receive_task(callback_query: types.CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(lambda c: c.data == 'iiko_btn_No')
 async def receive_task(callback_query: types.CallbackQuery, state: FSMContext):
     
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     await bot.edit_message_reply_markup(
         chat_id=callback_query.from_user.id,
         message_id=callback_query.message.message_id, 
@@ -622,6 +699,7 @@ async def receive_task(callback_query: types.CallbackQuery, state: FSMContext):
 
 @dp.message_handler(content_types=['text'],state=Specialist_States.comment_state)
 async def send_comment(msg: types.Message, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     data = await state.get_data()
     await bot.send_message(int(data["client_id"]), 'Ваша заявка не принята')
     await bot.send_message(int(data["client_id"]), 'Заявка:')
@@ -632,7 +710,7 @@ async def send_comment(msg: types.Message, state: FSMContext):
         name = data['cpec_name_new']
     except:
         name = msg.from_user.first_name
-    await bot.send_message(group_chat_id, f'{name}: Данная заявка не принято:')
+    await bot.send_message(group_chat_id, f'{name}: Данная заявка не принята:')
     await bot.send_message(group_chat_id, data['client_task'])
     await bot.send_message(group_chat_id, f'Причина:\n{msg.text}')
 
@@ -670,17 +748,19 @@ async def send_comment(msg: types.Message, state: FSMContext):
 
 @dp.callback_query_handler(lambda c: c.data == 'accec_iiko_tsak')
 async def view_accepted_task(callback_query: types.CallbackQuery, state: FSMContext):
-        task_iiko_accepted_KB = InlineKeyboardMarkup(row_width=1)
-        numeration = 0
-        for file in os.listdir():
-            if "YESI" in file:
-                task_iiko_accepted_KB.add(InlineKeyboardButton(text=file, callback_data=f'{file}//{numeration}'))
-                numeration += 1
-        await callback_query.message.answer("Список принятых заявок Iiko",
-                               reply_markup=task_iiko_accepted_KB)
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
+    task_iiko_accepted_KB = InlineKeyboardMarkup(row_width=1)
+    numeration = 0
+    for file in os.listdir():
+        if "YESI" in file:
+            task_iiko_accepted_KB.add(InlineKeyboardButton(text=file, callback_data=f'{file}//{numeration}'))
+            numeration += 1
+    await callback_query.message.answer("Список принятых заявок Iiko",
+                            reply_markup=task_iiko_accepted_KB)
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('YESI'))
 async def iiko_accepted_task(callback_query: types.CallbackQuery, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     await bot.edit_message_reply_markup(
                                         chat_id=callback_query.from_user.id,
                                         message_id=callback_query.message.message_id, 
@@ -703,14 +783,12 @@ async def iiko_accepted_task(callback_query: types.CallbackQuery, state: FSMCont
                             db_type_in = 'Iiko',
                             file_name = task
                             )
-    await callback_query.message.answer(task_text, reply_markup=save_db_kb)
+    await callback_query.message.answer(task_text, reply_markup=nav.save_db_kb)
 
-closed_btn = InlineKeyboardButton('Закрыть', callback_data='closed_tasks')
-regected_btn = InlineKeyboardButton('Отменить', callback_data='regected_tasks')
-save_db_kb = InlineKeyboardMarkup(row_width=1).row(closed_btn, regected_btn)
 
 @dp.callback_query_handler(lambda c: c.data == 'closed_tasks')
 async def save_db_closed_tasks(callback_query: types.CallbackQuery, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     await bot.edit_message_reply_markup(
         chat_id=callback_query.from_user.id,
         message_id=callback_query.message.message_id, 
@@ -743,6 +821,7 @@ async def save_db_closed_tasks(callback_query: types.CallbackQuery, state: FSMCo
 
 @dp.callback_query_handler(lambda c: c.data == 'regected_tasks')
 async def save_db_regected_tasks(callback_query: types.CallbackQuery, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     await bot.edit_message_reply_markup(
         chat_id=callback_query.from_user.id,
         message_id=callback_query.message.message_id, 
@@ -779,6 +858,7 @@ async def save_db_regected_tasks(callback_query: types.CallbackQuery, state: FSM
 # Просмотр заявок для интеграции 1C
 @dp.callback_query_handler(lambda c: c.data == '1C_cpec')
 async def notifications_1C(callback_query: types.CallbackQuery, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     nots_1C_KB = InlineKeyboardMarkup(row_width=1)
 
     with open ('./notifications_1C.txt',encoding='utf-8') as file:
@@ -797,6 +877,7 @@ async def notifications_1C(callback_query: types.CallbackQuery, state: FSMContex
 # Call button 1C task 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('notifications_1C'))
 async def notification_1C(callback_query: types.CallbackQuery, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
 
     notification = f"{callback_query.data.split('_')[2]} {callback_query.data.split('_')[3]}"
     print('Notification:', notification)
@@ -828,13 +909,14 @@ async def notification_1C(callback_query: types.CallbackQuery, state: FSMContext
                                     db_type_in = '1C'
                                     )
             await callback_query.message.answer('Принять заявку?', 
-                                                reply_markup=option_for_1C_KB
+                                                reply_markup=nav.option_for_1C_KB
                                                 )
     if k == 0:
         await callback_query.message.answer('Данной заявки уже нет')
 
 @dp.callback_query_handler(lambda c: c.data == '1C_btn_Yes')
 async def receive_task_1C(callback_query: types.CallbackQuery, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     data = await state.get_data()
     await bot.edit_message_reply_markup(
         chat_id=callback_query.from_user.id,
@@ -873,6 +955,7 @@ async def receive_task_1C(callback_query: types.CallbackQuery, state: FSMContext
 @dp.callback_query_handler(lambda c: c.data == '1C_btn_No')
 async def receive_task_1C(callback_query: types.CallbackQuery, state: FSMContext):
     
+    lang = users_collection.find_one({'user_id':f'{callback_query.from_user.id}'})['language']
     await bot.edit_message_reply_markup(
         chat_id=callback_query.from_user.id,
         message_id=callback_query.message.message_id, 
@@ -887,6 +970,7 @@ async def receive_task_1C(callback_query: types.CallbackQuery, state: FSMContext
 
 @dp.message_handler(content_types=['text'],state=Specialist_States.comment_state_1C)
 async def send_comment_1C(msg: types.Message, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     data = await state.get_data()
     await bot.send_message(int(data["client_id"]), 'Ваша заявка не принята')
     await bot.send_message(int(data["client_id"]), 'Заявка:')
@@ -934,17 +1018,19 @@ async def send_comment_1C(msg: types.Message, state: FSMContext):
 
 @dp.callback_query_handler(lambda c: c.data == 'accec_1C_tsak')
 async def view_accepted_task_1C(callback_query: types.CallbackQuery, state: FSMContext):
-        task_1C_accepted_KB = InlineKeyboardMarkup(row_width=1)
-        numeration = 0
-        for file in os.listdir():
-            if "YESC" in file:
-                task_1C_accepted_KB.add(InlineKeyboardButton(text=file, callback_data=f'{file}//{numeration}'))
-                numeration += 1
-        await callback_query.message.answer("Список принятых заявок 1C",
-                               reply_markup=task_1C_accepted_KB)
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
+    task_1C_accepted_KB = InlineKeyboardMarkup(row_width=1)
+    numeration = 0
+    for file in os.listdir():
+        if "YESC" in file:
+            task_1C_accepted_KB.add(InlineKeyboardButton(text=file, callback_data=f'{file}//{numeration}'))
+            numeration += 1
+    await callback_query.message.answer("Список принятых заявок 1C",
+                            reply_markup=task_1C_accepted_KB)
         
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('YESC'))
 async def accepted_task_1C(callback_query: types.CallbackQuery, state: FSMContext):
+    lang = users_collection.find_one({'user_id':f'{msg.from_user.id}'})['language']
     await bot.edit_message_reply_markup(
                                         chat_id=callback_query.from_user.id,
                                         message_id=callback_query.message.message_id, 
@@ -966,7 +1052,7 @@ async def accepted_task_1C(callback_query: types.CallbackQuery, state: FSMContex
                             db_type_in = '1C',
                             file_name = task
                             )
-    await callback_query.message.answer(task_text, reply_markup=save_db_kb)
+    await callback_query.message.answer(task_text, reply_markup=nav.save_db_kb)
     
 
 if __name__ == '__main__':
