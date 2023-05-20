@@ -34,9 +34,9 @@ locale.setlocale(locale.LC_ALL, '')
 # Configure logging
 logging.basicConfig(level = logging.INFO)
 # Initialize bot and storage
-# bot = Bot(token = '5924382439:AAGLwM6sUPbY_cVxmOKzT_xf3b-PaUesZPs')
+bot = Bot(token = '5924382439:AAGLwM6sUPbY_cVxmOKzT_xf3b-PaUesZPs')
 # test bot token
-bot = Bot(token="6027542967:AAH634BtIzZSQiYOIn33WcV1-RQ_9v7bfk0")
+# bot = Bot(token="6027542967:AAH634BtIzZSQiYOIn33WcV1-RQ_9v7bfk0")
 dp = Dispatcher(bot, storage = MemoryStorage())
 
 class Clients_States(StatesGroup):
@@ -128,7 +128,7 @@ async def send_welcome(message: types.Message):
 
 
 # idd = group_chat_id_bd.find_one({'name': "group_chat"})["group_chat_id"]
-group_chat_id = -1001840340665
+group_chat_id = -1001803545201
 @dp.message_handler(commands=['test_group_chat_id'])
 async def test_group_chat_id(msg: types.Message):
     await bot.send_message(chat_id=group_chat_id, text="This group will receive notifications.")

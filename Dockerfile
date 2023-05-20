@@ -8,4 +8,4 @@ RUN pip install --no-cache-dir --upgrade -r req.txt
 
 COPY . /src
 
-CMD ["python3", "bot03.py"]
+CMD ["python3", "bot04.py"]
