@@ -84,6 +84,7 @@ translations = {
         "Принято" : "Qabul qilingan",
         "Ваша заявка принята" : "Sizning arizangiz qabul qilindi",
         "Заявка" : "Аriza",
+        "Данная заявка удалена" :"Ushbu so'rov o'chirildi.",
         "Данная заявка была принята" : "Bu ariza qabul qilindi",
         "Отказано" : "Rad etilgan",
         "Напишите причину отказа" : "Rad etish sababini yozing",

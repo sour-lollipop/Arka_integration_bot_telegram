@@ -13,6 +13,7 @@ import gspread
 from pymongo import MongoClient
 import phonenumbers
 import re
+from bson.objectid import ObjectId
 
 
 
@@ -319,6 +320,7 @@ async def view_my_tasks(callback_query: types.CallbackQuery):
     if collection.find_one({"userid": callback_query.from_user.id}):
         for task in collection.find({"userid": callback_query.from_user.id}):
             task_text = f'{_("Заявка", lang)}:\n'
+            task_text += f'task_type: {task["task_type"]}\n'
             task_text += f'user_name: {task["username"]}\n'
             task_text += f'user_id: {task["userid"]}\n'
             task_text += f'{_("ФИО менеджера", lang)}: {task["fio_menedjer"]}\n'
@@ -333,10 +335,23 @@ async def view_my_tasks(callback_query: types.CallbackQuery):
             else:
                 task_text += f'{_("Конфигурация данных", lang)}: {task["data_config"]}\n'
                 task_text += f'{_("Количество касс", lang)}: {task["cass_count"]}\n'
-            task_text += f'{_("Данная заявка была отправлена", lang)}: {task["task_date"]}'
-            await  bot.send_message(callback_query.from_user.id, task)
+            task_text += f'{_("Данная заявка была отправлена", lang)}: {task["task_date"]}\n'
+            task_text += f'status: {task["status"]}'
+            delete_kb = InlineKeyboardMarkup(row_width=1).add(InlineKeyboardButton('DELETE', callback_data=f'DELETE_{task["_id"]}'))
+            await  bot.send_message(callback_query.from_user.id, task_text, reply_markup=delete_kb)
     else:
         await  bot.send_message(callback_query.from_user.id, _('Ранее, вы не создавали заявки', lang))
+
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('DELETE_')) 
+async def delete_my_task(callback_query: types.CallbackQuery):
+    await bot.edit_message_reply_markup(
+        chat_id=callback_query.from_user.id,
+        message_id=callback_query.message.message_id, 
+        reply_markup=None
+    )
+    lang = users_collection.find_one({'user_id':callback_query.from_user.id})['language']
+    collection.delete_one({"_id": ObjectId(callback_query.data.replace("DELETE_", ""))})
+    await  callback_query.message.answer(_("Данная заявка удалена",lang)) 
 
 @dp.callback_query_handler(lambda c: c.data == 'Iiko')
 async def Start_to_create_Iiko(callback_query: types.CallbackQuery, state: FSMContext):
@@ -654,6 +669,11 @@ async def notifications_1C(callback_query: types.CallbackQuery, state: FSMContex
 # Call button iiko task 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('notification_iiko_'))
 async def iiko_notification(callback_query: types.CallbackQuery, state: FSMContext):
+    await bot.edit_message_reply_markup(
+        chat_id=callback_query.from_user.id,
+        message_id=callback_query.message.message_id, 
+        reply_markup=None
+    )
     k = 0
     lang = users_collection.find_one({'user_id':callback_query.from_user.id})['language']
     for task in collection.find({'status': 'holver'}):
@@ -688,10 +708,15 @@ async def iiko_notification(callback_query: types.CallbackQuery, state: FSMConte
 # Call button 1C task 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('notifications_1C'))
 async def notification_1C(callback_query: types.CallbackQuery, state: FSMContext):
+    await bot.edit_message_reply_markup(
+        chat_id=callback_query.from_user.id,
+        message_id=callback_query.message.message_id, 
+        reply_markup=None
+    )
     lang = users_collection.find_one({'user_id':callback_query.from_user.id})['language']
     k = 0
     for task in collection.find({'status': 'holver'}):
-        if task['task_type'] == 'Iiko' and task['userid'] == int(callback_query.data.split('_')[2]) and task["task_date"] == callback_query.data.split('_')[3]:
+        if task['task_type'] == '1C' and task['userid'] == int(callback_query.data.split('_')[2]) and task["task_date"] == callback_query.data.split('_')[3]:
             task_data = task
             k += 1
     if k != 0:            
@@ -718,7 +743,7 @@ async def notification_1C(callback_query: types.CallbackQuery, state: FSMContext
                                 task_data = task_data
                                 )
         await callback_query.message.answer(_("Принять заявку?", lang),
-                                            reply_markup=nav.nav.operation_(lang)
+                                            reply_markup=nav.operation_(lang)
                                             )
     else:
         await callback_query.message.answer(_("Данной заявки уже нет", lang))
@@ -733,12 +758,31 @@ async def receive_task(callback_query: types.CallbackQuery, state: FSMContext):
         message_id=callback_query.message.message_id, 
         reply_markup=None
     )
-    collection.update_one({"_id": data["task_data"]["_id"]}, {"$set":{"status": "accepted"}})
+    collection.update_one({"_id": ObjectId(data["task_data"]["_id"])}, {"$set":{"status": "accepted"}})
 
     await callback_query.message.answer(_("Принято", lang))
-    await bot.send_message(int(data["task_data"]["userid"]), _("Ваша заявка принята", lang))
-    await bot.send_message(int(data["task_data"]["userid"]), f'{_("Заявка", lang)}:\n')
-    await bot.send_message(int(data["task_data"]["userid"]), data['client_task'])
+
+    lang2 = users_collection.find_one({'user_id':int(data["task_data"]["userid"])})['language']
+    task_text = f'{_("Заявка", lang2)}:\n'
+    task_text += f'user_name: {data["task_data"]["username"]}\n'
+    task_text += f'user_id: {data["task_data"]["userid"]}\n'
+    task_text += f'{_("ФИО менеджера", lang)}: {data["task_data"]["fio_menedjer"]}\n'
+    task_text += f'{_("Контактный номер менеджера", lang2)}: {data["task_data"]["contact_number_menedjer"]}\n'
+    task_text += f'{_("Имя организации", lang2)}: {data["task_data"]["organization_name"]}\n'
+    task_text += f'{_("Имя клиента", lang2)}: {data["task_data"]["fio_client"]}\n'
+    task_text += f'{_("Контактный номер клиента", lang2)}: {data["task_data"]["contact_number_client"]}\n'
+    if data["task_data"]["task_type"] == '1C':
+        task_text += f'{_("Конфигурация данных", lang2)}: {data["task_data"]["data_config"]}\n'
+        task_text += f'{_("Количество касс", lang2)}: {data["task_data"]["cass_count"]}\n'
+    else:
+        task_text += f'{_("Версия Iiko", lang2)}: {data["task_data"]["Iiko_version"]}\n'
+        task_text += f'{_("Время установки", lang2)}: {data["task_data"]["install_date"]}\n'
+        task_text += f'{_("Адрес установки" , lang2)}: {data["task_data"]["adress_install_date"]}\n'
+    task_text += f'{_("Данная заявка была отправлена", lang2)}: {data["task_data"]["task_date"]}'
+
+    await bot.send_message(int(data["task_data"]["userid"]), _("Ваша заявка принята", lang2))
+    await bot.send_message(int(data["task_data"]["userid"]), f'{_("Заявка", lang2)}:\n')
+    await bot.send_message(int(data["task_data"]["userid"]), task_text)
 
     spec = specialist_collection.find_one({'spec_id': callback_query.from_user.id})
     name = spec['spec_name']
@@ -758,7 +802,7 @@ async def receive_task(callback_query: types.CallbackQuery, state: FSMContext):
         reply_markup=None
     )
     data = await state.get_data()
-    collection.update_one({"_id": data["task_data"]["_id"]}, {"$set":{"status": "not accepted"}})
+    collection.update_one({"_id": ObjectId(data["task_data"]["_id"])}, {"$set":{"status": "not accepted"}})
     
     await callback_query.message.answer(_("Отказано", lang))
     
@@ -769,9 +813,28 @@ async def receive_task(callback_query: types.CallbackQuery, state: FSMContext):
 async def send_comment(msg: types.Message, state: FSMContext):
     lang = users_collection.find_one({'user_id':msg.from_user.id})['language']
     data = await state.get_data()
-    await bot.send_message(int(data["task_data"]["userid"]), _("Ваша заявка не принята", lang))
-    await bot.send_message(int(data["task_data"]["userid"]), f'{_("Заявка", lang)}:')
-    await bot.send_message(int(data["task_data"]["userid"]), data['client_task'])
+
+    lang2 = users_collection.find_one({'user_id':int(data["task_data"]["userid"])})['language']
+    task_text = f'{_("Заявка", lang2)}:\n'
+    task_text += f'user_name: {data["task_data"]["username"]}\n'
+    task_text += f'user_id: {data["task_data"]["userid"]}\n'
+    task_text += f'{_("ФИО менеджера", lang)}: {data["task_data"]["fio_menedjer"]}\n'
+    task_text += f'{_("Контактный номер менеджера", lang2)}: {data["task_data"]["contact_number_menedjer"]}\n'
+    task_text += f'{_("Имя организации", lang2)}: {data["task_data"]["organization_name"]}\n'
+    task_text += f'{_("Имя клиента", lang2)}: {data["task_data"]["fio_client"]}\n'
+    task_text += f'{_("Контактный номер клиента", lang2)}: {data["task_data"]["contact_number_client"]}\n'
+    if data["task_data"]["task_type"] == '1C':
+        task_text += f'{_("Конфигурация данных", lang2)}: {data["task_data"]["data_config"]}\n'
+        task_text += f'{_("Количество касс", lang2)}: {data["task_data"]["cass_count"]}\n'
+    else:
+        task_text += f'{_("Версия Iiko", lang2)}: {data["task_data"]["Iiko_version"]}\n'
+        task_text += f'{_("Время установки", lang2)}: {data["task_data"]["install_date"]}\n'
+        task_text += f'{_("Адрес установки" , lang2)}: {data["task_data"]["adress_install_date"]}\n'
+    task_text += f'{_("Данная заявка была отправлена", lang2)}: {data["task_data"]["task_date"]}'
+
+    await bot.send_message(int(data["task_data"]["userid"]), _("Ваша заявка не принята", lang2))
+    await bot.send_message(int(data["task_data"]["userid"]), f'{_("Заявка", lang2)}:')
+    await bot.send_message(int(data["task_data"]["userid"]), task_text)
     await bot.send_message(int(data["task_data"]["userid"]), f'{_("Комментарий специалиста", lang)}:\n{msg.text}')
 
     spec = specialist_collection.find_one({'spec_id': msg.from_user.id})
@@ -811,7 +874,7 @@ async def view_accepted_task(callback_query: types.CallbackQuery, state: FSMCont
         if task['task_type'] == 'Iiko': 
             print(task)
             notification = f'{num}| {task["username"]} {task["task_date"]}' 
-            notification_data = f'accepted_tasks_iiko_{task["userid"]}_{task["task_date"]}_{num}'
+            notification_data = f'accepted_tasks_iiko_{task["_id"]}'
             task_iiko_accepted_KB.add(InlineKeyboardButton(text=notification, callback_data=f'{notification_data}'))
             num += 1
     await callback_query.message.answer(_("Список принятых заявок Iiko", lang),
@@ -825,9 +888,8 @@ async def view_accepted_task_1C(callback_query: types.CallbackQuery, state: FSMC
     num = 0
     for task in collection.find({'status': 'accepted'}):
         if task['task_type'] == '1C': 
-            print(task)
             notification = f'{num}| {task["username"]} {task["task_date"]}' 
-            notification_data = f'accepted_tasks_1c_{task["userid"]}_{task["task_date"]}_{num}'
+            notification_data = f'accepted_tasks_1c_{task["_id"]}'
             task_1C_accepted_KB.add(InlineKeyboardButton(text=notification, callback_data=f'{notification_data}'))
             num += 1
     await callback_query.message.answer(_("Список принятых заявок 1C", lang),
@@ -836,17 +898,13 @@ async def view_accepted_task_1C(callback_query: types.CallbackQuery, state: FSMC
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('accepted_tasks_iiko_'))
 async def iiko_accepted_task(callback_query: types.CallbackQuery, state: FSMContext):
-    lang = users_collection.find_one({'user_id':callback_query.from_user.id})['language']
     await bot.edit_message_reply_markup(
-                                        chat_id=callback_query.from_user.id,
-                                        message_id=callback_query.message.message_id, 
-                                        reply_markup=None
-                                        )
-    for task in collection.find({'status': 'accepted'}):
-        if task['task_type'] == 'Iiko' and task['userid'] == int(callback_query.data.split('_')[3]) and task["task_date"] == callback_query.data.split('_')[4]:
-            task_data = task
-    task = callback_query.data.split('//')[0]
-    print(task)
+        chat_id=callback_query.from_user.id,
+        message_id=callback_query.message.message_id, 
+        reply_markup=None
+    )
+    lang = users_collection.find_one({'user_id':callback_query.from_user.id})['language'] 
+    task_data = collection.find_one({'_id': ObjectId(callback_query.data.split('_')[3])})
     task_text = f'{_("Заявка", lang)}:\n'
     task_text += f'user_name: {task_data["username"]}\n'
     task_text += f'user_id: {task_data["userid"]}\n'
@@ -868,17 +926,13 @@ async def iiko_accepted_task(callback_query: types.CallbackQuery, state: FSMCont
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('accepted_tasks_1c_'))
 async def accepted_task_1C(callback_query: types.CallbackQuery, state: FSMContext):
-    lang = users_collection.find_one({'user_id':callback_query.from_user.id})['language']
     await bot.edit_message_reply_markup(
-                                        chat_id=callback_query.from_user.id,
-                                        message_id=callback_query.message.message_id, 
-                                        reply_markup=None
-                                        )
-    for task in collection.find({'status': 'accepted'}):
-        if task['task_type'] == '1C' and task['userid'] == int(callback_query.data.split('_')[3]) and task["task_date"] == callback_query.data.split('_')[4]:
-            task_data = task
-    task = callback_query.data.split('//')[0]
-    print(task)
+        chat_id=callback_query.from_user.id,
+        message_id=callback_query.message.message_id, 
+        reply_markup=None
+    )
+    lang = users_collection.find_one({'user_id':callback_query.from_user.id})['language'] 
+    task_data = collection.find_one({'_id': ObjectId(callback_query.data.split('_')[3])})
     task_text = ''
     task_text = f'{_("Заявка", lang)}:\n'
     task_text += f'user_name: {task_data["username"]}\n'
@@ -908,7 +962,7 @@ async def save_db_closed_tasks(callback_query: types.CallbackQuery, state: FSMCo
         reply_markup=None
     )
     data = await state.get_data()
-    collection.update_one({"_id": data["task_data"]["_id"]}, {"$set":{"status": "closed"}})
+    collection.update_one({"_id": ObjectId(data["task_data"]["_id"])}, {"$set":{"status": "closed"}})
 
     post = {"manager_name": f"{data['task_data']['fio_menedjer']}",
             "manager_phone": f"{data['task_data']['contact_number_menedjer']}",
@@ -941,7 +995,7 @@ async def save_db_regected_tasks(callback_query: types.CallbackQuery, state: FSM
         reply_markup=None
     )
     data = await state.get_data()
-    collection.update_one({"_id": data["task_data"]["_id"]}, {"$set":{"status": "regected"}})
+    collection.update_one({"_id": ObjectId(data["task_data"]["_id"])}, {"$set":{"status": "regected"}})
     post = {"manager_name": f"{data['task_data']['fio_menedjer']}",
             "manager_phone": f"{data['task_data']['contact_number_menedjer']}",
             "organization": f"{data['task_data']['organization_name']}",
