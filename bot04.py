@@ -542,15 +542,15 @@ async def save_contact_client(msg: types.Message, state: FSMContext):
             task = collection.find_one({'userid': data['client_id']})
 
             await bot.send_message(chat_id = group_chat_id , 
-                                text = f'{_("Ник и id клиента", lang)} : {task["username"]} {task["userid"]}' +
-                                        f'{_("ФИО менеджера", lang)} : {task["fio_menedjer"]}' +
-                                        f'{_("Контактный номер менеджера", lang)} : {task["contact_number_menedjer"]}' +
-                                        f'{_("Имя организации", lang)} : {task["organization_name"] }' +
-                                        f'{_("Имя клиента", lang)} : {task["fio_client"]}' +
-                                        f'{_("Контактный номер клиента", lang)} : {task["contact_number_client"] }' +
-                                        f'{_("Конфигурация данных", lang)} : {task["data_config"]}' +
-                                        f'{_("Количество касс", lang)} : {task["cass_count"]}' +
-                                        f'{_("Данная заявка была отправлена", lang)} : {task["task_date"] }' 
+                                text = f'{_("Ник и id клиента", lang)} : {task["username"]} {task["userid"]}\n' +
+                                        f'{_("ФИО менеджера", lang)} : {task["fio_menedjer"]}\n' +
+                                        f'{_("Контактный номер менеджера", lang)} : {task["contact_number_menedjer"]}\n' +
+                                        f'{_("Имя организации", lang)} : {task["organization_name"] }\n' +
+                                        f'{_("Имя клиента", lang)} : {task["fio_client"]}\n' +
+                                        f'{_("Контактный номер клиента", lang)} : {task["contact_number_client"] }\n' +
+                                        f'{_("Конфигурация данных", lang)} : {task["data_config"]}\n' +
+                                        f'{_("Количество касс", lang)} : {task["cass_count"]}\n' +
+                                        f'{_("Данная заявка была отправлена", lang)} : {task["task_date"] }\n' 
                                 )
             await state.finish()
     else:
@@ -608,15 +608,15 @@ async def save_dates(msg: types.Message, state: FSMContext):
         task = collection.find_one({'userid': data['client_id']})
 
         await bot.send_message(chat_id = group_chat_id , 
-                            text = f'{_("Ник и id клиента", lang)} : {task["username"]} {task["userid"]}' +
-                                    f'{_("ФИО менеджера", lang)} : {task["fio_menedjer"]}' +
-                                    f'{_("Контактный номер менеджера", lang)} : {task["contact_number_menedjer"]}' +
-                                    f'{_("Имя организации", lang)} : {task["organization_name"] }' +
-                                    f'{_("Имя клиента", lang)} : {task["fio_client"]}' +
-                                    f'{_("Контактный номер клиента", lang)} : {task["contact_number_client"] }' +
-                                    f'{_("Версия Iiko", lang)} : {task["Iiko_version"]}' +
-                                    f'{_("Время установки", lang)} : {task["install_date"]}' +
-                                    f'{_("Адрес установки", lang)} : {task["adress_install_date"]}' +
+                            text = f'{_("Ник и id клиента", lang)} : {task["username"]} {task["userid"]}\n' +
+                                    f'{_("ФИО менеджера", lang)} : {task["fio_menedjer"]}\n' +
+                                    f'{_("Контактный номер менеджера", lang)} : {task["contact_number_menedjer"]}\n' +
+                                    f'{_("Имя организации", lang)} : {task["organization_name"] }\n' +
+                                    f'{_("Имя клиента", lang)} : {task["fio_client"]}\n' +
+                                    f'{_("Контактный номер клиента", lang)} : {task["contact_number_client"] }\n' +
+                                    f'{_("Версия Iiko", lang)} : {task["Iiko_version"]}\n' +
+                                    f'{_("Время установки", lang)} : {task["install_date"]}\n' +
+                                    f'{_("Адрес установки", lang)} : {task["adress_install_date"]}\n' +
                                     f'{_("Данная заявка была отправлена", lang)} : {task["task_date"] }' 
                             )
   
@@ -766,7 +766,7 @@ async def receive_task(callback_query: types.CallbackQuery, state: FSMContext):
     task_text = f'{_("Заявка", lang2)}:\n'
     task_text += f'user_name: {data["task_data"]["username"]}\n'
     task_text += f'user_id: {data["task_data"]["userid"]}\n'
-    task_text += f'{_("ФИО менеджера", lang)}: {data["task_data"]["fio_menedjer"]}\n'
+    task_text += f'{_("ФИО менеджера", lang2)}: {data["task_data"]["fio_menedjer"]}\n'
     task_text += f'{_("Контактный номер менеджера", lang2)}: {data["task_data"]["contact_number_menedjer"]}\n'
     task_text += f'{_("Имя организации", lang2)}: {data["task_data"]["organization_name"]}\n'
     task_text += f'{_("Имя клиента", lang2)}: {data["task_data"]["fio_client"]}\n'
